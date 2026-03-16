@@ -45,6 +45,25 @@ export function initMqtt(): void {
   client.on("connect", () => {
     console.log(`[mqtt] connected to ${BROKER}`);
     client!.publish(`${PREFIX}/status`, "online", { retain: true, qos: 1 });
+
+    // Publish hub device so all cameras are grouped under it
+    const hubConfig = {
+      name: "Status",
+      unique_id: "dingdongditch_hub_status",
+      state_topic: `${PREFIX}/status`,
+      icon: "mdi:doorbell-video",
+      device: {
+        identifiers: ["dingdongditch_hub"],
+        name: "DingDongDitch",
+        manufacturer: "DingDongDitch",
+        model: "Ring Camera Recorder",
+      },
+    };
+    client!.publish(
+      `${DISCOVERY_PREFIX}/sensor/dingdongditch/hub/config`,
+      JSON.stringify(hubConfig),
+      { retain: true, qos: 1 },
+    );
   });
 
   client.on("error", (err) => {
@@ -60,7 +79,7 @@ function safeName(camera: string): string {
   return camera.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
 }
 
-function publishDiscovery(camera: string): void {
+export function publishDiscovery(camera: string): void {
   if (!client?.connected) return;
 
   const id = safeName(camera);
@@ -69,9 +88,10 @@ function publishDiscovery(camera: string): void {
 
   const device = {
     identifiers: [`dingdongditch_${id}`],
-    name: `DingDongDitch ${camera}`,
+    name: camera,
     manufacturer: "DingDongDitch",
     model: "Ring Camera Recorder",
+    via_device: "dingdongditch_hub",
   };
 
   // Sensor: last recording timestamp + attributes

@@ -1,6 +1,7 @@
 import { RingApi, RingCamera } from "ring-client-api";
 import { getConfig, setToken, getCameraConfig } from "../config/store.js";
 import { handleMotion } from "./motion-handler.js";
+import { publishDiscovery } from "../mqtt/publisher.js";
 import type { Subscription } from "rxjs";
 
 let ringApi: RingApi | null = null;
@@ -37,6 +38,11 @@ export async function start(): Promise<void> {
 
     cameras = await ringApi.getCameras();
     console.log(`[ring] found ${cameras.length} camera(s): ${cameras.map((c) => c.name).join(", ")}`);
+
+    // Publish HA MQTT discovery for all cameras on startup
+    for (const cam of cameras) {
+      publishDiscovery(cam.name);
+    }
 
     subscribe();
   } catch (e) {
