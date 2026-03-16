@@ -1,5 +1,7 @@
 node_modules/
+dist/
+config/
+recordings/
 .env
-ring-service/node_modules/
 *.mp4
 clips/

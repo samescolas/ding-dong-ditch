@@ -1,10 +1,11 @@
 import crypto from "crypto";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import apiRouter from "./api/router.js";
 import { start } from "./recorder/manager.js";
 import { startCleanup } from "./recorder/cleanup.js";
+import { initStorage } from "./storage/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -35,12 +36,12 @@ const LOGIN_HTML = `<!DOCTYPE html>
 <button class="primary" type="submit">Login</button>
 </form></div></main></body></html>`;
 
-app.get("/login", (req, res) => {
+app.get("/login", (req: Request, res: Response) => {
   if (!UI_PASSWORD) return res.redirect("/");
   res.type("html").send(LOGIN_HTML);
 });
 
-app.post("/login", (req, res) => {
+app.post("/login", (req: Request, res: Response) => {
   if (!UI_PASSWORD) return res.redirect("/");
   const { password } = req.body;
   if (password === UI_PASSWORD) {
@@ -51,13 +52,13 @@ app.post("/login", (req, res) => {
     '<div class="msg error">Invalid password.</div>'));
 });
 
-app.post("/logout", (req, res) => {
+app.post("/logout", (_req: Request, res: Response) => {
   res.clearCookie("auth_token", { path: "/" });
   res.redirect("/login");
 });
 
 // Auth middleware
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   if (!UI_PASSWORD) return next();
   // Allow style.css to load on login page
   if (req.path === "/style.css" || req.path === "/api/health") return next();
@@ -67,7 +68,7 @@ app.use((req, res, next) => {
   res.redirect("/login");
 });
 
-function parseCookie(cookieHeader, name) {
+function parseCookie(cookieHeader: string | undefined, name: string): string | null {
   if (!cookieHeader) return null;
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
   return match ? match[1] : null;
@@ -75,12 +76,12 @@ function parseCookie(cookieHeader, name) {
 
 // --- App routes ---
 
-app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.get("/api/health", (_req: Request, res: Response) => res.json({ ok: true }));
 app.use("/api", apiRouter);
 app.use(express.static(path.join(__dirname, "public")));
 
 // SPA fallback
-app.get("*", (req, res) => {
+app.get("*", (_req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -89,9 +90,13 @@ app.listen(PORT, () => {
   if (UI_PASSWORD) console.log("[server] UI password protection enabled");
 });
 
-// Start Ring recorder if token is configured
-start().catch((e) => {
-  console.error("[startup] recorder failed to start:", e.message);
+// Initialize storage then start services
+initStorage().then(() => {
+  start().catch((e) => {
+    console.error("[startup] recorder failed to start:", (e as Error).message);
+  });
+  startCleanup();
+}).catch((e) => {
+  console.error("[startup] storage init failed:", (e as Error).message);
+  process.exit(1);
 });
-
-startCleanup();

@@ -1,23 +1,24 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { RingApi } from "ring-client-api";
 import { RingRestClient } from "ring-client-api/rest-client";
 import { getToken, setToken } from "../config/store.js";
 import { getRingApi, restart } from "../recorder/manager.js";
+import type { LoginSession } from "../types.js";
 
 const router = Router();
 
 // In-progress login sessions keyed by a simple session id
-const loginSessions = new Map();
+const loginSessions = new Map<string, LoginSession>();
 
 // Get auth status
-router.get("/status", (req, res) => {
+router.get("/status", (_req: Request, res: Response) => {
   const hasToken = !!getToken();
   const connected = !!getRingApi();
   res.json({ hasToken, connected });
 });
 
 // Step 1: Start login with email + password
-router.post("/login", async (req, res) => {
+router.post("/login", async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: "email and password are required" });
@@ -50,12 +51,12 @@ router.post("/login", async (req, res) => {
       throw e;
     }
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    res.status(400).json({ error: (e as Error).message });
   }
 });
 
 // Step 2: Submit 2FA code
-router.post("/login/verify", async (req, res) => {
+router.post("/login/verify", async (req: Request, res: Response) => {
   const { sessionId, code } = req.body;
   if (!sessionId || !code) {
     return res.status(400).json({ error: "sessionId and code are required" });
@@ -75,12 +76,12 @@ router.post("/login/verify", async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    res.status(400).json({ error: (e as Error).message });
   }
 });
 
 // Set refresh token directly (manual paste)
-router.post("/token", async (req, res) => {
+router.post("/token", async (req: Request, res: Response) => {
   const { refreshToken } = req.body;
   if (!refreshToken || typeof refreshToken !== "string") {
     return res.status(400).json({ error: "refreshToken is required" });
@@ -96,7 +97,7 @@ router.post("/token", async (req, res) => {
 
     res.json({ ok: true, cameras: cams.length });
   } catch (e) {
-    res.status(400).json({ error: `Invalid token: ${e.message}` });
+    res.status(400).json({ error: `Invalid token: ${(e as Error).message}` });
   }
 });
 

@@ -1,20 +1,21 @@
-import { RingApi } from "ring-client-api";
+import { RingApi, RingCamera } from "ring-client-api";
 import { getConfig, setToken, getCameraConfig } from "../config/store.js";
 import { handleMotion } from "./motion-handler.js";
+import type { Subscription } from "rxjs";
 
-let ringApi = null;
-let cameras = [];
-let subscriptions = [];
+let ringApi: RingApi | null = null;
+let cameras: RingCamera[] = [];
+let subscriptions: Subscription[] = [];
 
-export function getRingApi() {
+export function getRingApi(): RingApi | null {
   return ringApi;
 }
 
-export function getCameras() {
+export function getCameras(): RingCamera[] {
   return cameras;
 }
 
-export async function start() {
+export async function start(): Promise<void> {
   const token = getConfig().refreshToken;
   if (!token) {
     console.log("[ring] no refresh token configured, skipping init");
@@ -24,12 +25,11 @@ export async function start() {
   try {
     ringApi = new RingApi({
       refreshToken: token,
-      cameraDingsPollingSeconds: 2,
       cameraStatusPollingSeconds: 20,
     });
 
     ringApi.onRefreshTokenUpdated.subscribe({
-      next: (newToken) => {
+      next: (newToken: { newRefreshToken: string }) => {
         console.log("[auth] refresh token updated, persisting");
         setToken(newToken.newRefreshToken);
       },
@@ -40,13 +40,13 @@ export async function start() {
 
     subscribe();
   } catch (e) {
-    console.error("[ring] failed to initialize:", e.message);
+    console.error("[ring] failed to initialize:", (e as Error).message);
     ringApi = null;
     cameras = [];
   }
 }
 
-export async function stop() {
+export async function stop(): Promise<void> {
   unsubscribe();
   if (ringApi) {
     ringApi.disconnect();
@@ -55,12 +55,12 @@ export async function stop() {
   cameras = [];
 }
 
-export async function restart() {
+export async function restart(): Promise<void> {
   await stop();
   await start();
 }
 
-function subscribe() {
+function subscribe(): void {
   unsubscribe();
 
   for (const cam of cameras) {
@@ -73,7 +73,7 @@ function subscribe() {
     console.log(`[ring] ${cam.name}: subscribing to motion events`);
 
     if (cam.onMotionDetected) {
-      const sub = cam.onMotionDetected.subscribe((active) => {
+      const sub = cam.onMotionDetected.subscribe((active: boolean) => {
         if (active) {
           console.log(`[evt] ${cam.name}: motion detected`);
           handleMotion(cam);
@@ -92,9 +92,9 @@ function subscribe() {
   }
 }
 
-function unsubscribe() {
+function unsubscribe(): void {
   for (const sub of subscriptions) {
-    try { sub.unsubscribe(); } catch {}
+    try { sub.unsubscribe(); } catch { /* ignore */ }
   }
   subscriptions = [];
 }

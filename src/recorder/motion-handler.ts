@@ -1,16 +1,22 @@
+import type { RingCamera } from "ring-client-api";
 import { recordClip } from "./clip-recorder.js";
 import { getCameraConfig } from "../config/store.js";
 
-const state = new Map(); // cam.id → { recording, lastRecordAt }
+interface CameraState {
+  recording: boolean;
+  lastRecordAt: number;
+}
 
-function getState(camId) {
+const state = new Map<number, CameraState>();
+
+function getState(camId: number): CameraState {
   if (!state.has(camId)) {
     state.set(camId, { recording: false, lastRecordAt: 0 });
   }
-  return state.get(camId);
+  return state.get(camId)!;
 }
 
-export async function handleMotion(cam) {
+export async function handleMotion(cam: RingCamera): Promise<void> {
   const s = getState(cam.id);
   const cfg = getCameraConfig(cam.id);
   const now = Date.now();
@@ -26,7 +32,7 @@ export async function handleMotion(cam) {
   try {
     await recordClip(cam, cfg.recordingDuration);
   } catch (e) {
-    console.error(`[rec] ${cam.name}: error:`, e.message);
+    console.error(`[rec] ${cam.name}: error:`, (e as Error).message);
   } finally {
     s.recording = false;
   }

@@ -1,82 +1,6 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-nextcloud}
-      POSTGRES_USER: ${POSTGRES_USER:-nextcloud}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nextcloud}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    networks:
-      - backend
-
-  nextcloud:
-    image: nextcloud:latest
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "5280:80"
-    volumes:
-      - nextcloud-data:/var/www/html
-      - recordings:/recordings
-      - ./nextcloud/setup-external-storage.sh:/setup-external-storage.sh:ro
-    environment:
-      POSTGRES_HOST: db
-      POSTGRES_DB: ${POSTGRES_DB:-nextcloud}
-      POSTGRES_USER: ${POSTGRES_USER:-nextcloud}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
-      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:-changeme}
-      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_TRUSTED_DOMAINS:-localhost}
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost/status.php || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    networks:
-      - backend
-      - frontend
-
-  nextcloud-setup:
-    image: nextcloud:latest
-    depends_on:
-      nextcloud:
-        condition: service_healthy
-    volumes:
-      - nextcloud-data:/var/www/html
-      - recordings:/recordings
-      - ./nextcloud/setup-external-storage.sh:/setup-external-storage.sh:ro
-    environment:
-      NEXTCLOUD_DOMAIN: ${NEXTCLOUD_DOMAIN:-}
-    entrypoint: ["/bin/bash", "/setup-external-storage.sh"]
-    networks:
-      - backend
-
-  nextcloud-cron:
-    image: nextcloud:latest
-    restart: unless-stopped
-    depends_on:
-      nextcloud:
-        condition: service_healthy
-    volumes:
-      - nextcloud-data:/var/www/html
-      - recordings:/recordings
-    entrypoint: ["/bin/bash", "-c", "while true; do php /var/www/html/occ files:scan --all --quiet --unscanned; sleep 300; done"]
-    networks:
-      - backend
-
-  ring-service:
-    build: ./ring-service
+  app:
+    build: .
     restart: unless-stopped
     ports:
       - "4280:3000"
@@ -88,9 +12,13 @@ services:
       RECORDINGS_PATH: /recordings
       CONFIG_PATH: /app/config
       UI_PASSWORD: ${UI_PASSWORD:-}
-      NEXTCLOUD_URL: http://nextcloud
-      NEXTCLOUD_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
-      NEXTCLOUD_PASS: ${NEXTCLOUD_ADMIN_PASSWORD:-changeme}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      # S3_BUCKET: ${S3_BUCKET:-}
+      # S3_REGION: ${S3_REGION:-us-east-1}
+      # S3_ENDPOINT: ${S3_ENDPOINT:-}
+      # S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      # S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      # S3_PREFIX: ${S3_PREFIX:-}
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 30s
@@ -98,7 +26,6 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - backend
       - frontend
 
   # Optional: Cloudflare Tunnel for remote access
@@ -116,11 +43,8 @@ services:
       - tunnel
 
 volumes:
-  db-data:
-  nextcloud-data:
   recordings:
   ring-config:
 
 networks:
-  backend:
   frontend:
