@@ -17,7 +17,7 @@ Records video clips when your Ring cameras detect motion, stores them locally or
 ## Quick Start
 
 ```bash
-git clone https://github.com/youruser/dingdongditch.git
+git clone https://github.com/franciscofsales/ding-dong-ditch.git
 cd dingdongditch
 cp .env.example .env
 # Edit .env with your settings
@@ -146,11 +146,13 @@ All settings are configurable from the web UI under the Settings tab:
 
 Per-camera overrides are available on the Cameras tab.
 
+## Credits
+
+Forked from [samescolas/ding-dong-ditch](https://github.com/samescolas/ding-dong-ditch).
+
 ## Why?
 
 Because fuck Amazon and fuck a surveillance state. :)
-
-https://buymeacoffee.com/samescolas
 
 ## License
 MIT
