@@ -95,6 +95,40 @@ CLOUDFLARE_TUNNEL_TOKEN=your-token-here
 docker compose --profile tunnel up -d
 ```
 
+## Home Assistant Integration (MQTT)
+
+DingDongDitch can publish recording events to an MQTT broker and auto-register sensors in Home Assistant via [MQTT Discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery).
+
+Add to `.env`:
+```bash
+MQTT_ENABLED=true
+MQTT_BROKER=mqtt://emqx:1883
+```
+
+Then uncomment the MQTT environment variables in `docker-compose.yml` and ensure the container can reach the broker network.
+
+Each Ring camera automatically appears in HA as:
+- **Sensor** (`sensor.dingdongditch_<camera>_last_recording`) -- updates with each new recording timestamp
+- **Device trigger** -- fires on each recording, usable in automations
+
+Example automation for mobile notifications:
+```yaml
+alias: "DingDongDitch Recording Alert"
+description: "Send a push notification when a new Ring recording is saved"
+mode: single
+triggers:
+  - trigger: state
+    entity_id: sensor.dingdongditch_front_door_last_recording
+conditions: []
+actions:
+  - action: notify.mobile_app
+    data:
+      title: "Motion: {{ trigger.to_state.attributes.camera }}"
+      message: "Recording saved at {{ trigger.to_state.state }}"
+```
+
+Recordings can be viewed directly via `https://your-host/api/recordings/<path>`.
+
 ## Architecture
 
 | Service | Purpose |

@@ -3,6 +3,7 @@ import os from "os";
 import path from "path";
 import type { RingCamera } from "ring-client-api";
 import { getStorage } from "../storage/index.js";
+import { publishRecording } from "../mqtt/publisher.js";
 
 const TMP_DIR = path.join(os.tmpdir(), "ring-tmp");
 
@@ -44,6 +45,16 @@ export async function recordClip(cam: RingCamera, durationSeconds: number): Prom
 
     await getStorage().persist(filePath, key);
     console.log(`[rec] ${cam.name}: saved ${key}`);
+
+    const now = new Date();
+    publishRecording({
+      camera: cam.name,
+      file: path.basename(key),
+      path: key,
+      date: now.toISOString().slice(0, 10),
+      timestamp: now.toISOString(),
+      url: `/api/recordings/${key}`,
+    });
   } finally {
     try { await liveCall.stop(); } catch { /* ignore */ }
   }

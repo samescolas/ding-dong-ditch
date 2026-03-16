@@ -6,6 +6,7 @@ import apiRouter from "./api/router.js";
 import { start } from "./recorder/manager.js";
 import { startCleanup } from "./recorder/cleanup.js";
 import { initStorage } from "./storage/index.js";
+import { initMqtt } from "./mqtt/publisher.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -89,6 +90,9 @@ app.listen(PORT, () => {
   console.log(`[server] listening on :${PORT}`);
   if (UI_PASSWORD) console.log("[server] UI password protection enabled");
 });
+
+// Initialize MQTT (no-op if disabled)
+initMqtt();
 
 // Initialize storage then start services
 initStorage().then(() => {
