@@ -3,6 +3,9 @@ import fs from "fs";
 import path from "path";
 
 const RECORDINGS_PATH = process.env.RECORDINGS_PATH || "/recordings";
+const NEXTCLOUD_URL = process.env.NEXTCLOUD_URL || "";
+const NEXTCLOUD_USER = process.env.NEXTCLOUD_USER || "";
+const NEXTCLOUD_PASS = process.env.NEXTCLOUD_PASS || "";
 const router = Router();
 
 // List recordings grouped by date/camera
@@ -75,6 +78,9 @@ router.delete("/:date/:camera/:file", (req, res) => {
 
   fs.unlinkSync(filePath);
 
+  // Remove from Nextcloud's index via WebDAV
+  deleteFromNextcloud(`${date}/${camera}/${file}`);
+
   // Clean up empty parent directories
   const camDir = path.join(RECORDINGS_PATH, date, camera);
   if (fs.readdirSync(camDir).length === 0) {
@@ -87,5 +93,20 @@ router.delete("/:date/:camera/:file", (req, res) => {
 
   res.json({ ok: true });
 });
+
+async function deleteFromNextcloud(clipPath) {
+  if (!NEXTCLOUD_URL || !NEXTCLOUD_USER) return;
+  const url = `${NEXTCLOUD_URL}/remote.php/dav/files/${NEXTCLOUD_USER}/Recordings/${clipPath}`;
+  try {
+    await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${NEXTCLOUD_USER}:${NEXTCLOUD_PASS}`).toString("base64"),
+      },
+    });
+  } catch (e) {
+    console.error("[nextcloud] failed to delete from Nextcloud:", e.message);
+  }
+}
 
 export default router;

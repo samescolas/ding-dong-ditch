@@ -88,6 +88,9 @@ services:
       RECORDINGS_PATH: /recordings
       CONFIG_PATH: /app/config
       UI_PASSWORD: ${UI_PASSWORD:-}
+      NEXTCLOUD_URL: http://nextcloud
+      NEXTCLOUD_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      NEXTCLOUD_PASS: ${NEXTCLOUD_ADMIN_PASSWORD:-changeme}
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 30s
@@ -95,6 +98,7 @@ services:
       retries: 3
       start_period: 30s
     networks:
+      - backend
       - frontend
 
   # Optional: Cloudflare Tunnel for remote access

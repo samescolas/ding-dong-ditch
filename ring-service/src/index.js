@@ -11,7 +11,11 @@ const PORT = process.env.PORT || 3000;
 const UI_PASSWORD = process.env.UI_PASSWORD || "";
 
 const app = express();
-const validTokens = new Set();
+
+// Derive a stable auth token from the password so it survives container restarts
+const AUTH_TOKEN = UI_PASSWORD
+  ? crypto.createHmac("sha256", "dingdongditch").update(UI_PASSWORD).digest("hex")
+  : "";
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -40,9 +44,7 @@ app.post("/login", (req, res) => {
   if (!UI_PASSWORD) return res.redirect("/");
   const { password } = req.body;
   if (password === UI_PASSWORD) {
-    const token = crypto.randomUUID();
-    validTokens.add(token);
-    res.cookie("auth_token", token, { httpOnly: true, sameSite: "lax", path: "/" });
+    res.cookie("auth_token", AUTH_TOKEN, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 365 * 24 * 60 * 60 * 1000 });
     return res.redirect("/");
   }
   res.type("html").send(LOGIN_HTML.replace('<div id="msg"></div>',
@@ -50,8 +52,6 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  const token = parseCookie(req.headers.cookie, "auth_token");
-  if (token) validTokens.delete(token);
   res.clearCookie("auth_token", { path: "/" });
   res.redirect("/login");
 });
@@ -62,7 +62,7 @@ app.use((req, res, next) => {
   // Allow style.css to load on login page
   if (req.path === "/style.css" || req.path === "/api/health") return next();
   const token = parseCookie(req.headers.cookie, "auth_token");
-  if (token && validTokens.has(token)) return next();
+  if (token && token === AUTH_TOKEN) return next();
   if (req.path.startsWith("/api/")) return res.status(401).json({ error: "unauthorized" });
   res.redirect("/login");
 });
