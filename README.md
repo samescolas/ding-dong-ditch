@@ -100,6 +100,10 @@ All settings are configurable from the web UI under the Settings tab:
 
 Per-camera overrides are available on the Cameras tab.
 
-## License
+## Why?
+Because fuck Amazon and fuck a surveillance state. :)
 
+https://buymeacoffee.com/samescolas
+
+## License
 MIT
