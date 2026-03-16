@@ -1,4 +1,4 @@
-# DingDong
+# DingDongDitch
 
 Self-hosted Ring camera motion recorder with Nextcloud integration.
 
@@ -17,8 +17,8 @@ Records video clips when your Ring cameras detect motion, stores them locally, a
 ## Quick Start
 
 ```bash
-git clone https://github.com/youruser/dingdong.git
-cd dingdong
+git clone https://github.com/youruser/dingdongditch.git
+cd dingdongditch
 cp .env.example .env
 # Edit .env with your passwords
 docker compose up -d

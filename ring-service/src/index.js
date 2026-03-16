@@ -20,9 +20,9 @@ app.use(express.urlencoded({ extended: false }));
 
 const LOGIN_HTML = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>DingDong - Login</title><link rel="stylesheet" href="/style.css"/></head>
+<title>DingDongDitch - Login</title><link rel="stylesheet" href="/style.css"/></head>
 <body><main style="max-width:400px;margin:4rem auto;padding:0 1rem;">
-<h1 style="text-align:center;margin-bottom:1.5rem;">DingDong</h1>
+<h1 style="text-align:center;margin-bottom:1.5rem;">DingDongDitch</h1>
 <div class="card"><h3 style="margin-bottom:0.75rem;">Login</h3>
 <div id="msg"></div>
 <form method="POST" action="/login">
