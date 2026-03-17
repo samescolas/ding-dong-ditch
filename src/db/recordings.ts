@@ -118,6 +118,33 @@ export function getDistinctCameras(): string[] {
   return rows.map((r) => r.camera);
 }
 
+export function getRecordingsWithoutDescription(limit: number): RecordingRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      "SELECT * FROM recordings WHERE description IS NULL ORDER BY date DESC LIMIT ?"
+    )
+    .all(limit) as RecordingRow[];
+}
+
+export function updateRecordingDescription(
+  id: number,
+  description: string,
+  snapshotKey?: string
+): void {
+  const db = getDb();
+  if (snapshotKey !== undefined) {
+    db.prepare(
+      "UPDATE recordings SET description = ?, snapshot_key = ? WHERE id = ?"
+    ).run(description, snapshotKey, id);
+  } else {
+    db.prepare("UPDATE recordings SET description = ? WHERE id = ?").run(
+      description,
+      id
+    );
+  }
+}
+
 export function backfillFromStorage(recordings: Array<{ camera: string; date: string; file: string; path: string; size: number }>): number {
   const db = getDb();
   const stmt = db.prepare(`

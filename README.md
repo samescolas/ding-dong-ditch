@@ -13,7 +13,6 @@ Records video clips when your Ring cameras detect motion, stores them locally or
 - **AI snapshot descriptions** -- optionally describe motion snapshots using any OpenAI-compatible vision API (GPT-4o, llava, etc.)
 - **Home Assistant integration** -- MQTT auto-discovery for sensors and device triggers
 - **Storage backends** -- local/NFS (default, zero config) or S3-compatible (AWS, MinIO, Backblaze B2, Cloudflare R2)
-- **Cloudflare Tunnel** -- optional remote access without port forwarding
 - **Password protection** -- optional password gate on the management UI
 - **Auto-cleanup** -- configurable retention period to prevent disk from filling up
 
@@ -78,25 +77,6 @@ S3_SECRET_ACCESS_KEY=your-secret
 ```
 
 Then uncomment the S3 environment variables in `docker-compose.yml`.
-
-## Remote Access (Cloudflare Tunnel)
-
-To access the Ring UI from outside your network without port forwarding:
-
-1. Buy or transfer a domain to [Cloudflare](https://dash.cloudflare.com)
-2. Go to [Zero Trust](https://one.dash.cloudflare.com) > Networks > Tunnels > Create a tunnel
-3. Add a public hostname: `ring.yourdomain.com` -> `http://app:3000`
-4. Copy the tunnel token and add to `.env`:
-
-```bash
-CLOUDFLARE_TUNNEL_TOKEN=your-token-here
-```
-
-5. Start with the tunnel profile:
-
-```bash
-docker compose --profile tunnel up -d
-```
 
 ## AI Snapshot Descriptions
 
@@ -236,7 +216,6 @@ npm run test:coverage # Coverage report
 | Service | Purpose |
 |---------|---------|
 | `app` | Motion recorder + Express API + React UI + SQLite DB + storage |
-| `cloudflared` | Optional Cloudflare Tunnel (requires `--profile tunnel`) |
 
 ### Tech Stack
 
@@ -271,7 +250,7 @@ Per-camera overrides are available on the Cameras tab.
 | `AI_API_KEY` | _(empty)_ | API key (optional for local models) |
 | `AI_MODEL` | `gpt-4o` | Vision model to use |
 
-See `.env.example` for the full list including S3, MQTT topic, and Cloudflare Tunnel options.
+See `.env.example` for the full list including S3 and MQTT topic options.
 
 ## Credits
 

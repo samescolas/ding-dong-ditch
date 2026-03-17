@@ -39,19 +39,6 @@ services:
     networks:
       - frontend
 
-  # Optional: Cloudflare Tunnel for remote access
-  # Set CLOUDFLARE_TUNNEL_TOKEN in .env to enable
-  # Start with: docker compose --profile tunnel up -d
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    command: tunnel run
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
-    networks:
-      - frontend
-    profiles:
-      - tunnel
 
 volumes:
   recordings:

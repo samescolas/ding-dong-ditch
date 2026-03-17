@@ -15,4 +15,5 @@ export interface StorageBackend {
   serve(key: string, res: Response): Promise<void>;
   delete(key: string): Promise<void>;
   deleteOlderThan(cutoffDate: string): Promise<void>;
+  getLocalPath(key: string): Promise<string>;
 }

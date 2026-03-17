@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import Layout from "./components/Layout";
+import Navigation from "./components/Navigation";
 import AuthTab from "./components/AuthTab";
 import CamerasTab from "./components/CamerasTab";
 import SettingsTab from "./components/SettingsTab";
@@ -55,20 +55,22 @@ export default function App() {
   if (!ready) return null;
 
   return (
-    <>
-      <Layout
+    <div className="app-layout">
+      <Navigation
         activeTab={activeTab}
         connected={connected}
         onSwitchTab={switchTab}
       />
-      <main>
-        {activeTab === "auth" && (
-          <AuthTab connected={connected} onConnected={onConnected} />
-        )}
-        {activeTab === "cameras" && <CamerasTab connected={connected} />}
-        {activeTab === "settings" && <SettingsTab />}
-        {activeTab === "recordings" && <RecordingsTab />}
+      <main className="main-content">
+        <div className={`page-content${activeTab === "recordings" ? " page-content--wide" : ""} page-enter`} key={activeTab}>
+          {activeTab === "auth" && (
+            <AuthTab connected={connected} onConnected={onConnected} />
+          )}
+          {activeTab === "cameras" && <CamerasTab connected={connected} />}
+          {activeTab === "settings" && <SettingsTab />}
+          {activeTab === "recordings" && <RecordingsTab />}
+        </div>
       </main>
-    </>
+    </div>
   );
 }

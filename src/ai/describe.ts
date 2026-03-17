@@ -1,3 +1,7 @@
+export function isAiEnabled(): boolean {
+  return process.env.AI_ENABLED === "true";
+}
+
 function getConfig() {
   return {
     enabled: process.env.AI_ENABLED === "true",

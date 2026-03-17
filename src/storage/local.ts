@@ -90,6 +90,10 @@ export class LocalStorageBackend implements StorageBackend {
     }
   }
 
+  async getLocalPath(key: string): Promise<string> {
+    return path.join(this.basePath, key);
+  }
+
   async deleteOlderThan(cutoffDate: string): Promise<void> {
     try {
       const entries = fs.readdirSync(this.basePath);

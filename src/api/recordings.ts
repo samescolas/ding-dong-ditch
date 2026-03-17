@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { getStorage } from "../storage/index.js";
 import { queryRecordings, deleteRecordingByPath, getDistinctCameras } from "../db/recordings.js";
+import { isAiEnabled } from "../ai/describe.js";
+import { redescribeRecordings, isRedescribeRunning } from "../ai/redescribe.js";
 import { log } from "../logger.js";
 
 const router = Router();
@@ -31,6 +33,28 @@ router.get("/cameras", (_req: Request, res: Response) => {
   } catch (e) {
     log.error("[recordings] cameras error:", (e as Error).message);
     res.status(500).json({ error: "failed to list cameras" });
+  }
+});
+
+// Re-describe recordings that have no AI description
+router.post("/redescribe", async (_req: Request, res: Response) => {
+  if (!isAiEnabled()) {
+    return res.status(400).json({ error: "AI is not enabled" });
+  }
+
+  if (isRedescribeRunning()) {
+    return res.status(409).json({ error: "Redescribe already in progress" });
+  }
+
+  const body = _req.body as { limit?: number } | undefined;
+  const limit = Math.min(Math.max(body?.limit ?? 10, 1), 50);
+
+  try {
+    const result = await redescribeRecordings(limit);
+    res.json(result);
+  } catch (e) {
+    log.error("[recordings] redescribe error:", (e as Error).message);
+    res.status(500).json({ error: "failed to redescribe recordings" });
   }
 });
 

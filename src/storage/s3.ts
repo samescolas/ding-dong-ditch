@@ -138,6 +138,36 @@ export class S3StorageBackend implements StorageBackend {
     }));
   }
 
+  async getLocalPath(key: string): Promise<string> {
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const os = await import("os");
+    const path = await import("path");
+
+    const response = await this.client.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: this.fullKey(key),
+      })
+    );
+
+    if (!response.Body) {
+      throw new Error(`S3 object not found: ${key}`);
+    }
+
+    const tmpDir = os.default.tmpdir();
+    const tmpFile = path.default.join(
+      tmpDir,
+      `ddd-${Date.now()}-${key.replace(/\//g, "-")}`
+    );
+    const stream = response.Body as import("stream").Readable;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    fs.writeFileSync(tmpFile, Buffer.concat(chunks));
+    return tmpFile;
+  }
+
   async deleteOlderThan(cutoffDate: string): Promise<void> {
     const { ListObjectsV2Command, DeleteObjectsCommand } = await import("@aws-sdk/client-s3");
 

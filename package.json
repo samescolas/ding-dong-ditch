@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "tsx --watch src/index.ts",
+    "dev": "tsx --watch src/index.ts & cd client && npx vite --port 5173 & wait",
+    "dev:server": "tsx --watch src/index.ts",
+    "dev:client": "cd client && npx vite --port 5173",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
