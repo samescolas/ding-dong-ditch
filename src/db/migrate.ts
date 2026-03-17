@@ -41,6 +41,24 @@ const MIGRATIONS: Array<(db: Database.Database) => void> = [
   (db) => {
     db.exec(`ALTER TABLE recordings ADD COLUMN event_type TEXT DEFAULT 'motion'`);
   },
+  // Version 2 → 3: guard FTS triggers against NULL descriptions
+  (db) => {
+    db.exec(`
+      DROP TRIGGER IF EXISTS recordings_ad;
+      CREATE TRIGGER recordings_ad AFTER DELETE ON recordings WHEN old.description IS NOT NULL
+        BEGIN INSERT INTO recordings_fts(recordings_fts, rowid, description)
+              VALUES('delete', old.id, old.description); END;
+
+      DROP TRIGGER IF EXISTS recordings_au;
+      CREATE TRIGGER recordings_au AFTER UPDATE OF description ON recordings
+        BEGIN
+          INSERT INTO recordings_fts(recordings_fts, rowid, description)
+            SELECT 'delete', old.id, old.description WHERE old.description IS NOT NULL;
+          INSERT INTO recordings_fts(rowid, description)
+            SELECT new.id, new.description WHERE new.description IS NOT NULL;
+        END;
+    `);
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

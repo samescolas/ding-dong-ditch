@@ -190,7 +190,6 @@ describe("recordings API", () => {
       file: "10-00-00.mp4",
       path: "2024-01-15/Front Door/10-00-00.mp4",
       size: 1024,
-      description: "A person at the front door",
     });
     mockStorage.delete.mockResolvedValue(undefined);
     const app = buildApp();
@@ -228,6 +227,25 @@ describe("recordings API", () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(mockStorage.delete).toHaveBeenCalledWith("2024-01-15/Front_Door/10-00-00.mp4");
+  });
+
+  it("DELETE succeeds for recording with NULL description (backfilled)", async () => {
+    insertRecording({
+      camera: "Front_Door",
+      date: "2024-01-15",
+      timestamp: "2024-01-15T12:00:00",
+      file: "12-00-00.mp4",
+      path: "2024-01-15/Front_Door/12-00-00.mp4",
+      size: 512,
+      // no description — simulates a backfilled recording
+    });
+    mockStorage.delete.mockResolvedValue(undefined);
+
+    const app = buildApp();
+    const res = await (await request(app)).delete("/api/recordings/2024-01-15/Front_Door/12-00-00.mp4");
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
   });
 
   it("GET / filters by eventType", async () => {

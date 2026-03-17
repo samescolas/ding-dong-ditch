@@ -105,14 +105,13 @@ export function useRecordings() {
       try {
         const res = await fetch(`/api/recordings/${clipPath}`, { method: "DELETE" });
         if (!res.ok) {
-          // Revert on failure
-          loadRecordings();
           throw new Error("Failed to delete recording.");
         }
       } catch {
-        loadRecordings();
+        loadRecordings(); // single call, only on failure
         throw new Error("Failed to delete recording.");
       }
+      loadRecordings(); // sync with server after success
     },
     [loadRecordings],
   );
