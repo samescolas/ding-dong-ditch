@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { Response } from "express";
 import type { StorageBackend, RecordingMetadata } from "./backend.js";
+import { log } from "../logger.js";
 
 export class LocalStorageBackend implements StorageBackend {
   private basePath: string;
@@ -97,11 +98,11 @@ export class LocalStorageBackend implements StorageBackend {
         if (entry < cutoffDate) {
           const dirPath = path.join(this.basePath, entry);
           fs.rmSync(dirPath, { recursive: true, force: true });
-          console.log(`[cleanup] deleted ${dirPath}`);
+          log.info(`[cleanup] deleted ${dirPath}`);
         }
       }
     } catch (e) {
-      console.error("[cleanup] error:", (e as Error).message);
+      log.error("[cleanup] error:", (e as Error).message);
     }
   }
 }

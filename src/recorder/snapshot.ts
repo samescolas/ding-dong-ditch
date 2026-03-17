@@ -3,10 +3,11 @@ import os from "os";
 import path from "path";
 import type { RingCamera } from "ring-client-api";
 import { getStorage } from "../storage/index.js";
+import { log } from "../logger.js";
 
 const TMP_DIR = path.join(os.tmpdir(), "ring-tmp");
 
-export async function captureSnapshot(cam: RingCamera): Promise<string | null> {
+export async function captureSnapshot(cam: RingCamera): Promise<{ key: string; buffer: Buffer } | null> {
   try {
     const buffer = await cam.getSnapshot();
 
@@ -23,10 +24,10 @@ export async function captureSnapshot(cam: RingCamera): Promise<string | null> {
     fs.writeFileSync(filePath, buffer);
     await getStorage().persist(filePath, key);
 
-    console.log(`[snapshot] ${cam.name}: saved ${key}`);
-    return key;
+    log.info(`[snapshot] ${cam.name}: saved ${key}`);
+    return { key, buffer };
   } catch (e) {
-    console.error(`[snapshot] ${cam.name}: failed: ${(e as Error).message}`);
+    log.error(`[snapshot] ${cam.name}: failed: ${(e as Error).message}`);
     return null;
   }
 }

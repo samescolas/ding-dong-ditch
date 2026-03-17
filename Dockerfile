@@ -6,6 +6,8 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src/ src/
 RUN npx tsc
+COPY client/ client/
+RUN cd client && npm ci && npx vite build
 
 # Production stage
 FROM node:20-alpine
@@ -18,7 +20,6 @@ COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist/ dist/
-COPY src/public/ dist/public/
 
 RUN mkdir -p /app/config /recordings
 

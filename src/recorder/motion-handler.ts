@@ -2,6 +2,8 @@ import type { RingCamera } from "ring-client-api";
 import { recordClip } from "./clip-recorder.js";
 import { getCameraConfig } from "../config/store.js";
 import { captureSnapshot } from "./snapshot.js";
+import { describeSnapshot } from "../ai/describe.js";
+import { log } from "../logger.js";
 
 interface CameraState {
   recording: boolean;
@@ -23,7 +25,7 @@ export async function handleMotion(cam: RingCamera): Promise<void> {
   const now = Date.now();
 
   if (s.recording || now - s.lastRecordAt < cfg.cooldownSeconds * 1000) {
-    console.log(`[skip] ${cam.name}: busy or in cooldown`);
+    log.info(`[skip] ${cam.name}: busy or in cooldown`);
     return;
   }
 
@@ -31,12 +33,17 @@ export async function handleMotion(cam: RingCamera): Promise<void> {
   s.lastRecordAt = now;
 
   // Capture snapshot at the moment of motion, before recording starts
-  const snapshotKey = await captureSnapshot(cam);
+  const snapshot = await captureSnapshot(cam);
+
+  // Start AI description concurrently — it runs during the recording
+  const descriptionPromise = snapshot
+    ? describeSnapshot(snapshot.buffer, cam.name)
+    : Promise.resolve(undefined);
 
   try {
-    await recordClip(cam, cfg.recordingDuration, snapshotKey);
+    await recordClip(cam, cfg.recordingDuration, snapshot?.key, descriptionPromise);
   } catch (e) {
-    console.error(`[rec] ${cam.name}: error:`, (e as Error).message);
+    log.error(`[rec] ${cam.name}: error:`, (e as Error).message);
   } finally {
     s.recording = false;
   }

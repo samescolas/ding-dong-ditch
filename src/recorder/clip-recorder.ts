@@ -4,6 +4,7 @@ import path from "path";
 import type { RingCamera } from "ring-client-api";
 import { getStorage } from "../storage/index.js";
 import { publishRecording } from "../mqtt/publisher.js";
+import { log } from "../logger.js";
 
 const TMP_DIR = path.join(os.tmpdir(), "ring-tmp");
 
@@ -21,9 +22,9 @@ function tempPath(cameraName: string): { filePath: string; key: string } {
   return { filePath, key };
 }
 
-export async function recordClip(cam: RingCamera, durationSeconds: number, snapshotKey?: string | null): Promise<void> {
+export async function recordClip(cam: RingCamera, durationSeconds: number, snapshotKey?: string | null, descriptionPromise?: Promise<string | undefined>): Promise<void> {
   const { filePath, key } = tempPath(cam.name);
-  console.log(`[rec] ${cam.name}: recording ${durationSeconds}s → ${key}`);
+  log.info(`[rec] ${cam.name}: recording ${durationSeconds}s → ${key}`);
 
   const liveCall = await cam.startLiveCall();
 
@@ -44,7 +45,10 @@ export async function recordClip(cam: RingCamera, durationSeconds: number, snaps
     });
 
     await getStorage().persist(filePath, key);
-    console.log(`[rec] ${cam.name}: saved ${key}`);
+    log.info(`[rec] ${cam.name}: saved ${key}`);
+
+    // Await the AI description (runs concurrently with recording)
+    const description = await descriptionPromise;
 
     const now = new Date();
     publishRecording({
@@ -55,6 +59,7 @@ export async function recordClip(cam: RingCamera, durationSeconds: number, snaps
       timestamp: now.toISOString(),
       url: `/api/recordings/${key}`,
       snapshot_url: snapshotKey ? `/api/recordings/${snapshotKey}` : null,
+      ...(description ? { description } : {}),
     });
   } finally {
     try { await liveCall.stop(); } catch { /* ignore */ }

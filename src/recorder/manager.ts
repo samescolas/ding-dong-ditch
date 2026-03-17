@@ -2,6 +2,7 @@ import { RingApi, RingCamera } from "ring-client-api";
 import { getConfig, setToken, getCameraConfig } from "../config/store.js";
 import { handleMotion } from "./motion-handler.js";
 import { publishDiscovery } from "../mqtt/publisher.js";
+import { log } from "../logger.js";
 import type { Subscription } from "rxjs";
 
 let ringApi: RingApi | null = null;
@@ -19,7 +20,7 @@ export function getCameras(): RingCamera[] {
 export async function start(): Promise<void> {
   const token = getConfig().refreshToken;
   if (!token) {
-    console.log("[ring] no refresh token configured, skipping init");
+    log.info("[ring] no refresh token configured, skipping init");
     return;
   }
 
@@ -31,13 +32,13 @@ export async function start(): Promise<void> {
 
     ringApi.onRefreshTokenUpdated.subscribe({
       next: (newToken: { newRefreshToken: string }) => {
-        console.log("[auth] refresh token updated, persisting");
+        log.info("[auth] refresh token updated, persisting");
         setToken(newToken.newRefreshToken);
       },
     });
 
     cameras = await ringApi.getCameras();
-    console.log(`[ring] found ${cameras.length} camera(s): ${cameras.map((c) => c.name).join(", ")}`);
+    log.info(`[ring] found ${cameras.length} camera(s): ${cameras.map((c) => c.name).join(", ")}`);
 
     // Publish HA MQTT discovery for all cameras on startup
     for (const cam of cameras) {
@@ -46,7 +47,7 @@ export async function start(): Promise<void> {
 
     subscribe();
   } catch (e) {
-    console.error("[ring] failed to initialize:", (e as Error).message);
+    log.error("[ring] failed to initialize:", (e as Error).message);
     ringApi = null;
     cameras = [];
   }
@@ -72,16 +73,16 @@ function subscribe(): void {
   for (const cam of cameras) {
     const camCfg = getCameraConfig(cam.id);
     if (!camCfg.enabled) {
-      console.log(`[ring] ${cam.name}: monitoring disabled, skipping`);
+      log.info(`[ring] ${cam.name}: monitoring disabled, skipping`);
       continue;
     }
 
-    console.log(`[ring] ${cam.name}: subscribing to motion events`);
+    log.info(`[ring] ${cam.name}: subscribing to motion events`);
 
     if (cam.onMotionDetected) {
       const sub = cam.onMotionDetected.subscribe((active: boolean) => {
         if (active) {
-          console.log(`[evt] ${cam.name}: motion detected`);
+          log.info(`[evt] ${cam.name}: motion detected`);
           handleMotion(cam);
         }
       });
@@ -90,7 +91,7 @@ function subscribe(): void {
 
     if (cam.onDoorbellPressed) {
       const sub = cam.onDoorbellPressed.subscribe(() => {
-        console.log(`[evt] ${cam.name}: doorbell pressed`);
+        log.info(`[evt] ${cam.name}: doorbell pressed`);
         handleMotion(cam);
       });
       subscriptions.push(sub);

@@ -1,4 +1,5 @@
 import mqtt from "mqtt";
+import { log } from "../logger.js";
 
 const ENABLED = process.env.MQTT_ENABLED === "true";
 const BROKER = process.env.MQTT_BROKER || "";
@@ -18,16 +19,17 @@ export interface RecordingEvent {
   timestamp: string;
   url: string;
   snapshot_url: string | null;
+  description?: string;
 }
 
 export function initMqtt(): void {
   if (!ENABLED) {
-    console.log("[mqtt] disabled (MQTT_ENABLED != true)");
+    log.info("[mqtt] disabled (MQTT_ENABLED != true)");
     return;
   }
 
   if (!BROKER) {
-    console.warn("[mqtt] MQTT_ENABLED is true but MQTT_BROKER is not set, skipping");
+    log.warn("[mqtt] MQTT_ENABLED is true but MQTT_BROKER is not set, skipping");
     return;
   }
 
@@ -44,7 +46,7 @@ export function initMqtt(): void {
   });
 
   client.on("connect", () => {
-    console.log(`[mqtt] connected to ${BROKER}`);
+    log.info(`[mqtt] connected to ${BROKER}`);
     client!.publish(`${PREFIX}/status`, "online", { retain: true, qos: 1 });
 
     // Publish hub device so all cameras are grouped under it
@@ -68,11 +70,11 @@ export function initMqtt(): void {
   });
 
   client.on("error", (err) => {
-    console.error(`[mqtt] error: ${err.message}`);
+    log.error(`[mqtt] error: ${err.message}`);
   });
 
   client.on("reconnect", () => {
-    console.log("[mqtt] reconnecting...");
+    log.info("[mqtt] reconnecting...");
   });
 }
 
@@ -127,7 +129,7 @@ export function publishDiscovery(camera: string): void {
     { retain: true, qos: 1 },
   );
 
-  console.log(`[mqtt] published HA discovery for camera: ${camera}`);
+  log.info(`[mqtt] published HA discovery for camera: ${camera}`);
 }
 
 export function publishRecording(event: RecordingEvent): void {
@@ -144,5 +146,5 @@ export function publishRecording(event: RecordingEvent): void {
     { qos: 1 },
   );
 
-  console.log(`[mqtt] published recording event: ${event.path}`);
+  log.info(`[mqtt] published recording event: ${event.path}`);
 }

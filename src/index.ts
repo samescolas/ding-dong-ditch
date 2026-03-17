@@ -7,6 +7,7 @@ import { start } from "./recorder/manager.js";
 import { startCleanup } from "./recorder/cleanup.js";
 import { initStorage } from "./storage/index.js";
 import { initMqtt } from "./mqtt/publisher.js";
+import { log } from "./logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -79,16 +80,16 @@ function parseCookie(cookieHeader: string | undefined, name: string): string | n
 
 app.get("/api/health", (_req: Request, res: Response) => res.json({ ok: true }));
 app.use("/api", apiRouter);
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "client")));
 
 // SPA fallback
 app.get("*", (_req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "client", "index.html"));
 });
 
 app.listen(PORT, () => {
-  console.log(`[server] listening on :${PORT}`);
-  if (UI_PASSWORD) console.log("[server] UI password protection enabled");
+  log.info(`[server] listening on :${PORT}`);
+  if (UI_PASSWORD) log.info("[server] UI password protection enabled");
 });
 
 // Initialize MQTT (no-op if disabled)
@@ -97,10 +98,10 @@ initMqtt();
 // Initialize storage then start services
 initStorage().then(() => {
   start().catch((e) => {
-    console.error("[startup] recorder failed to start:", (e as Error).message);
+    log.error("[startup] recorder failed to start:", (e as Error).message);
   });
   startCleanup();
 }).catch((e) => {
-  console.error("[startup] storage init failed:", (e as Error).message);
+  log.error("[startup] storage init failed:", (e as Error).message);
   process.exit(1);
 });

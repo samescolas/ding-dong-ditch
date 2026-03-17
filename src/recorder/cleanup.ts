@@ -1,5 +1,6 @@
 import { getConfig } from "../config/store.js";
 import { getStorage } from "../storage/index.js";
+import { log } from "../logger.js";
 
 const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
 
@@ -15,9 +16,9 @@ async function cleanup(): Promise<void> {
 }
 
 export function startCleanup(): void {
-  cleanup().catch((e) => console.error("[cleanup] error:", (e as Error).message));
+  cleanup().catch((e) => log.error("[cleanup] error:", (e as Error).message));
   setInterval(() => {
-    cleanup().catch((e) => console.error("[cleanup] error:", (e as Error).message));
+    cleanup().catch((e) => log.error("[cleanup] error:", (e as Error).message));
   }, CLEANUP_INTERVAL);
-  console.log(`[cleanup] running every hour`);
+  log.info(`[cleanup] running every hour`);
 }

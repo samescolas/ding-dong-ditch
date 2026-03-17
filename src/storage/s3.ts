@@ -2,6 +2,7 @@ import fs from "fs";
 import type { Response } from "express";
 import type { Readable } from "stream";
 import type { StorageBackend, RecordingMetadata } from "./backend.js";
+import { log } from "../logger.js";
 
 // Types for @aws-sdk/client-s3 (dynamically imported)
 type S3Client = import("@aws-sdk/client-s3").S3Client;
@@ -167,7 +168,7 @@ export class S3StorageBackend implements StorageBackend {
           Bucket: this.bucket,
           Delete: { Objects: batch },
         }));
-        console.log(`[cleanup] deleted ${batch.length} objects older than ${cutoffDate}`);
+        log.info(`[cleanup] deleted ${batch.length} objects older than ${cutoffDate}`);
       }
 
       continuationToken = response.NextContinuationToken;

@@ -1,6 +1,7 @@
 import path from "path";
 import type { StorageBackend } from "./backend.js";
 import { LocalStorageBackend } from "./local.js";
+import { log } from "../logger.js";
 
 export type { StorageBackend, RecordingMetadata } from "./backend.js";
 
@@ -18,14 +19,14 @@ export async function initStorage(): Promise<void> {
     case "local": {
       const basePath = process.env.RECORDINGS_PATH || path.join(process.cwd(), "recordings");
       storage = new LocalStorageBackend(basePath);
-      console.log(`[storage] using local backend: ${basePath}`);
+      log.info(`[storage] using local backend: ${basePath}`);
       break;
     }
     case "s3": {
       // Dynamic import so @aws-sdk is only loaded when s3 is selected
       const { S3StorageBackend } = await import("./s3.js");
       storage = await S3StorageBackend.create();
-      console.log(`[storage] using S3 backend: ${process.env.S3_BUCKET}`);
+      log.info(`[storage] using S3 backend: ${process.env.S3_BUCKET}`);
       break;
     }
     default:
