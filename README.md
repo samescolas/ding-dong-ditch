@@ -7,7 +7,7 @@ Records video clips when your Ring cameras detect motion, stores them locally or
 ## Features
 
 - **Motion-triggered recording** -- automatically records when Ring cameras detect motion or doorbell presses, with distinct event types tracked per recording
-- **React web UI** -- configure cameras, recording settings, and view/play/delete recordings with filtering (camera, date, event type), search, and pagination
+- **React web UI** -- configure cameras, recording settings, and view/play/delete recordings with filtering (camera, date, event type), search, pagination, and multi-select mass delete
 - **SQLite metadata database** -- persists AI descriptions, enables full-text search, camera filtering, date range queries, and paginated browsing
 - **Ring login** -- sign in with email/password + 2FA directly from the web UI
 - **AI snapshot descriptions** -- optionally describe motion snapshots using any OpenAI-compatible vision API (GPT-4o, llava, etc.)
@@ -189,7 +189,8 @@ The response is a paginated object:
 
 Additional endpoints:
 - `GET /api/recordings/cameras` -- returns distinct camera names for filter dropdowns
-- `DELETE /api/recordings/:date/:camera/:file` -- removes both the file and the database record
+- `DELETE /api/recordings/:date/:camera/:file` -- removes the recording file, its paired snapshot (if any), and the database record
+- `POST /api/recordings/bulk-delete` -- accepts `{ "paths": ["2024-01-15/Front_Door/10-00-00.mp4", ...] }` and deletes each recording + snapshot; returns `{ "deleted": N, "errors": N }`
 
 ### Migration
 
