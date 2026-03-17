@@ -13,12 +13,13 @@ RUN cd client && npm ci && npx vite build
 # Production stage
 FROM node:20-alpine
 
-RUN apk add --no-cache ffmpeg python3 make g++
-
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev && apk del python3 make g++
+RUN apk add --no-cache ffmpeg python3 make g++ && \
+    npm ci --omit=dev && \
+    apk del python3 make g++ && \
+    rm -rf /root/.npm
 
 COPY --from=builder /app/dist/ dist/
 
