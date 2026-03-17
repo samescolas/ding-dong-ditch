@@ -7,6 +7,7 @@ export interface RecordingMetadata {
   path: string;       // relative key: "2024-01-15/Front_Door/14-30-00.mp4"
   size: number;
   created: Date;
+  snapshot_key?: string;  // corresponding .jpg key if found
 }
 
 export interface StorageBackend {

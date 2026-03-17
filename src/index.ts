@@ -8,7 +8,7 @@ import { startCleanup } from "./recorder/cleanup.js";
 import { initStorage, getStorage } from "./storage/index.js";
 import { initMqtt } from "./mqtt/publisher.js";
 import { initDb, closeDb } from "./db/index.js";
-import { backfillFromStorage } from "./db/recordings.js";
+import { backfillFromStorage, backfillSnapshotKeys } from "./db/recordings.js";
 import { log } from "./logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -107,6 +107,9 @@ initStorage().then(async () => {
     const existing = await getStorage().list();
     const count = backfillFromStorage(existing);
     if (count > 0) log.info(`[db] backfilled ${count} recordings from storage`);
+
+    const snapshotCount = backfillSnapshotKeys(existing);
+    if (snapshotCount > 0) log.info(`[db] linked ${snapshotCount} snapshot thumbnails`);
   } catch (e) {
     log.error("[db] backfill error:", (e as Error).message);
   }

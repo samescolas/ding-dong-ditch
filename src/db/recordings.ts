@@ -145,11 +145,11 @@ export function updateRecordingDescription(
   }
 }
 
-export function backfillFromStorage(recordings: Array<{ camera: string; date: string; file: string; path: string; size: number }>): number {
+export function backfillFromStorage(recordings: Array<{ camera: string; date: string; file: string; path: string; size: number; snapshot_key?: string }>): number {
   const db = getDb();
   const stmt = db.prepare(`
-    INSERT OR IGNORE INTO recordings (camera, date, timestamp, file, path, size)
-    VALUES (@camera, @date, @timestamp, @file, @path, @size)
+    INSERT OR IGNORE INTO recordings (camera, date, timestamp, file, path, size, snapshot_key)
+    VALUES (@camera, @date, @timestamp, @file, @path, @size, @snapshot_key)
   `);
 
   const insertAll = db.transaction((rows: typeof recordings) => {
@@ -165,6 +165,7 @@ export function backfillFromStorage(recordings: Array<{ camera: string; date: st
         file: row.file,
         path: row.path,
         size: row.size,
+        snapshot_key: row.snapshot_key ?? null,
       });
       if (result.changes > 0) count++;
     }
@@ -172,4 +173,21 @@ export function backfillFromStorage(recordings: Array<{ camera: string; date: st
   });
 
   return insertAll(recordings);
+}
+
+export function backfillSnapshotKeys(recordings: Array<{ path: string; snapshot_key?: string }>): number {
+  const db = getDb();
+  const stmt = db.prepare(
+    "UPDATE recordings SET snapshot_key = ? WHERE path = ? AND snapshot_key IS NULL"
+  );
+  const run = db.transaction((rows: typeof recordings) => {
+    let count = 0;
+    for (const row of rows) {
+      if (!row.snapshot_key) continue;
+      const result = stmt.run(row.snapshot_key, row.path);
+      if (result.changes > 0) count++;
+    }
+    return count;
+  });
+  return run(recordings);
 }

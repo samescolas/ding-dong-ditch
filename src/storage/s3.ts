@@ -60,6 +60,7 @@ export class S3StorageBackend implements StorageBackend {
     const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
 
     const results: RecordingMetadata[] = [];
+    const jpgKeys = new Set<string>();
     let continuationToken: string | undefined;
 
     do {
@@ -70,10 +71,18 @@ export class S3StorageBackend implements StorageBackend {
       }));
 
       for (const obj of response.Contents || []) {
-        if (!obj.Key || !obj.Key.endsWith(".mp4")) continue;
+        if (!obj.Key) continue;
+
+        const relKey = this.prefix ? obj.Key.slice(this.prefix.length) : obj.Key;
+
+        if (obj.Key.endsWith(".jpg")) {
+          jpgKeys.add(relKey);
+          continue;
+        }
+
+        if (!obj.Key.endsWith(".mp4")) continue;
 
         // Strip prefix and parse: YYYY-MM-DD/Camera_Name/HH-MM-SS.mp4
-        const relKey = this.prefix ? obj.Key.slice(this.prefix.length) : obj.Key;
         const parts = relKey.split("/");
         if (parts.length !== 3) continue;
 
@@ -92,6 +101,12 @@ export class S3StorageBackend implements StorageBackend {
 
       continuationToken = response.NextContinuationToken;
     } while (continuationToken);
+
+    // Match .jpg snapshots to their .mp4 counterparts
+    for (const result of results) {
+      const jpgKey = result.path.replace(".mp4", ".jpg");
+      if (jpgKeys.has(jpgKey)) result.snapshot_key = jpgKey;
+    }
 
     // Sort newest first (matches local backend behavior)
     results.sort((a, b) => b.path.localeCompare(a.path));

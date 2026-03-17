@@ -36,6 +36,7 @@ export default function RecordingCard({ recording, onPlay }: RecordingCardProps)
             src={`/api/recordings/${recording.snapshot_key}`}
             alt={`Snapshot from ${recording.camera}`}
             loading="lazy"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
         ) : (
           <div className="recording-card__placeholder-icon">

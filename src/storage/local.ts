@@ -44,6 +44,9 @@ export class LocalStorageBackend implements StorageBackend {
           for (const file of files) {
             const filePath = path.join(camPath, file);
             const stat = fs.statSync(filePath);
+            const jpgFile = file.replace(".mp4", ".jpg");
+            const jpgPath = path.join(camPath, jpgFile);
+            const snapshot_key = fs.existsSync(jpgPath) ? `${date}/${camera}/${jpgFile}` : undefined;
             results.push({
               date,
               camera,
@@ -51,6 +54,7 @@ export class LocalStorageBackend implements StorageBackend {
               path: `${date}/${camera}/${file}`,
               size: stat.size,
               created: stat.birthtime,
+              snapshot_key,
             });
           }
         }
