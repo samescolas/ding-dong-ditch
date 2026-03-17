@@ -4,6 +4,7 @@ import path from "path";
 import type { RingCamera } from "ring-client-api";
 import { getStorage } from "../storage/index.js";
 import { publishRecording } from "../mqtt/publisher.js";
+import { insertRecording } from "../db/recordings.js";
 import { log } from "../logger.js";
 
 const TMP_DIR = path.join(os.tmpdir(), "ring-tmp");
@@ -44,6 +45,7 @@ export async function recordClip(cam: RingCamera, durationSeconds: number, snaps
       setTimeout(resolve, (durationSeconds + 5) * 1000);
     });
 
+    const size = fs.statSync(filePath).size;
     await getStorage().persist(filePath, key);
     log.info(`[rec] ${cam.name}: saved ${key}`);
 
@@ -51,12 +53,30 @@ export async function recordClip(cam: RingCamera, durationSeconds: number, snaps
     const description = await descriptionPromise;
 
     const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const timestamp = now.toISOString();
+
+    try {
+      insertRecording({
+        camera: cam.name,
+        date,
+        timestamp,
+        file: path.basename(key),
+        path: key,
+        size,
+        snapshot_key: snapshotKey ?? null,
+        description: description ?? null,
+      });
+    } catch (e) {
+      log.error(`[rec] ${cam.name}: failed to insert DB row: ${(e as Error).message}`);
+    }
+
     publishRecording({
       camera: cam.name,
       file: path.basename(key),
       path: key,
-      date: now.toISOString().slice(0, 10),
-      timestamp: now.toISOString(),
+      date,
+      timestamp,
       url: `/api/recordings/${key}`,
       snapshot_url: snapshotKey ? `/api/recordings/${snapshotKey}` : null,
       ...(description ? { description } : {}),

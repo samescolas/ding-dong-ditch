@@ -5,8 +5,10 @@ import { fileURLToPath } from "url";
 import apiRouter from "./api/router.js";
 import { start } from "./recorder/manager.js";
 import { startCleanup } from "./recorder/cleanup.js";
-import { initStorage } from "./storage/index.js";
+import { initStorage, getStorage } from "./storage/index.js";
 import { initMqtt } from "./mqtt/publisher.js";
+import { initDb, closeDb } from "./db/index.js";
+import { backfillFromStorage } from "./db/recordings.js";
 import { log } from "./logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,11 +94,23 @@ app.listen(PORT, () => {
   if (UI_PASSWORD) log.info("[server] UI password protection enabled");
 });
 
+// Initialize database (synchronous — creates tables if needed)
+initDb();
+
 // Initialize MQTT (no-op if disabled)
 initMqtt();
 
 // Initialize storage then start services
-initStorage().then(() => {
+initStorage().then(async () => {
+  // Backfill DB from existing storage (idempotent, safe to run every startup)
+  try {
+    const existing = await getStorage().list();
+    const count = backfillFromStorage(existing);
+    if (count > 0) log.info(`[db] backfilled ${count} recordings from storage`);
+  } catch (e) {
+    log.error("[db] backfill error:", (e as Error).message);
+  }
+
   start().catch((e) => {
     log.error("[startup] recorder failed to start:", (e as Error).message);
   });
@@ -104,4 +118,10 @@ initStorage().then(() => {
 }).catch((e) => {
   log.error("[startup] storage init failed:", (e as Error).message);
   process.exit(1);
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  closeDb();
+  process.exit(0);
 });
