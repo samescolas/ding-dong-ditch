@@ -226,6 +226,40 @@ describe("recordings DB", () => {
       expect(results).toHaveLength(1);
       expect(results[0].timestamp).toBe("2024-01-16T09:00:00");
     });
+
+    it("returns empty array on empty database", () => {
+      const results = queryTimelineRecordings("Front_Door", "2024-01-01T00:00:00", "2024-12-31T23:59:59");
+      expect(results).toEqual([]);
+    });
+
+    it("handles single-second time range", () => {
+      seed();
+      const results = queryTimelineRecordings("Front_Door", "2024-01-15T10:00:00", "2024-01-15T10:00:00");
+      expect(results).toHaveLength(1);
+      expect(results[0].event_type).toBe("doorbell");
+    });
+
+    it("handles camera names with spaces", () => {
+      insertRecording({
+        camera: "Front Door",
+        date: "2024-01-15",
+        timestamp: "2024-01-15T10:30:00",
+        file: "10-30-00.mp4",
+        path: "2024-01-15/Front Door/10-30-00.mp4",
+        size: 512,
+        event_type: "doorbell",
+      });
+      const results = queryTimelineRecordings("Front Door", "2024-01-15T00:00:00", "2024-01-15T23:59:59");
+      expect(results).toHaveLength(1);
+      expect(results[0].event_type).toBe("doorbell");
+    });
+
+    it("filters motion-only recordings", () => {
+      seed();
+      const results = queryTimelineRecordings("Back_Yard", "2024-01-01T00:00:00", "2024-12-31T23:59:59", "motion");
+      expect(results).toHaveLength(1);
+      expect(results[0].event_type).toBe("motion");
+    });
   });
 
   describe("countRecordingsByType", () => {
@@ -259,6 +293,33 @@ describe("recordings DB", () => {
       expect(counts.total).toBe(1);
       expect(counts.motion).toBe(1);
       expect(counts.doorbell).toBe(0);
+    });
+
+    it("returns zeros on empty database", () => {
+      const counts = countRecordingsByType("Front_Door", "2024-01-01T00:00:00", "2024-12-31T23:59:59");
+      expect(counts).toEqual({ motion: 0, doorbell: 0, total: 0 });
+    });
+
+    it("handles single-second time range", () => {
+      seed();
+      const counts = countRecordingsByType("Front_Door", "2024-01-15T10:00:00", "2024-01-15T10:00:00");
+      expect(counts.total).toBe(1);
+      expect(counts.doorbell).toBe(1);
+    });
+
+    it("handles camera names with spaces", () => {
+      insertRecording({
+        camera: "Front Door",
+        date: "2024-01-15",
+        timestamp: "2024-01-15T10:30:00",
+        file: "10-30-00.mp4",
+        path: "2024-01-15/Front Door/10-30-00.mp4",
+        size: 512,
+        event_type: "motion",
+      });
+      const counts = countRecordingsByType("Front Door", "2024-01-15T00:00:00", "2024-01-15T23:59:59");
+      expect(counts.total).toBe(1);
+      expect(counts.motion).toBe(1);
     });
   });
 });
