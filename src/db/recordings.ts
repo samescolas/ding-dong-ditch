@@ -177,6 +177,32 @@ export function queryTimelineRecordings(
     .all(params) as TimelineRecording[];
 }
 
+export interface RecordingCounts {
+  motion: number;
+  doorbell: number;
+  total: number;
+}
+
+export function countRecordingsByType(
+  camera: string,
+  from: string,
+  to: string
+): RecordingCounts {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT
+        COUNT(*) AS total,
+        COUNT(CASE WHEN event_type = 'motion' THEN 1 END) AS motion,
+        COUNT(CASE WHEN event_type = 'doorbell' THEN 1 END) AS doorbell
+      FROM recordings
+      WHERE camera = @camera AND timestamp >= @from AND timestamp <= @to`
+    )
+    .get({ camera, from, to }) as { total: number; motion: number; doorbell: number };
+
+  return { motion: row.motion, doorbell: row.doorbell, total: row.total };
+}
+
 export function updateRecordingDescription(
   id: number,
   description: string,
