@@ -11,14 +11,33 @@ interface TimelinePlayerProps {
 
 function formatTimestamp(ts: string): string {
   const date = new Date(ts);
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
+  const datePart = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
   }).format(date);
+  return `${datePart} at ${timePart}`;
+}
+
+/**
+ * Extract camera name from path format: "YYYY-MM-DD/camera_name/HH-MM-SS.mp4"
+ */
+function extractCameraName(path: string): string {
+  const parts = path.split("/");
+  if (parts.length >= 3) {
+    return parts[1].replace(/_/g, " ");
+  }
+  return "Unknown camera";
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function eventLabel(eventType: string): string {
@@ -116,37 +135,53 @@ export default function TimelinePlayer({
       </div>
 
       <div className="timeline-player__meta">
-        <span className="timeline-player__timestamp">
-          {formatTimestamp(recording.timestamp)}
-        </span>
-        <span
-          className={`timeline-player__event-badge${
-            recording.event_type === "doorbell"
-              ? " timeline-player__event-badge--doorbell"
-              : ""
-          }`}
-        >
-          {eventLabel(recording.event_type)}
-        </span>
-        <span className="timeline-player__path">{recording.path}</span>
-        <button
-          className="timeline-player__delete"
-          onClick={() => onDelete(recording)}
-          aria-label="Delete recording"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div className="timeline-player__meta-primary">
+          <span className="timeline-player__camera">
+            {extractCameraName(recording.path)}
+          </span>
+          <span
+            className={`timeline-player__event-badge${
+              recording.event_type === "doorbell"
+                ? " timeline-player__event-badge--doorbell"
+                : ""
+            }`}
           >
-            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
+            {eventLabel(recording.event_type)}
+          </span>
+          {recording.size != null && (
+            <span className="timeline-player__size">
+              {formatFileSize(recording.size)}
+            </span>
+          )}
+          <button
+            className="timeline-player__delete"
+            onClick={() => onDelete(recording)}
+            aria-label="Delete recording"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+        <div className="timeline-player__meta-secondary">
+          <span className="timeline-player__timestamp">
+            {formatTimestamp(recording.timestamp)}
+          </span>
+          {recording.description && (
+            <span className="timeline-player__description">
+              {recording.description}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
