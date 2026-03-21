@@ -65,6 +65,7 @@
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   min-width: 140px;
+  transition: border-color var(--duration-fast) var(--ease-default);
 }
 
 .timeline-top-bar__camera-select:focus {
