@@ -8,6 +8,7 @@ import "./styles/layout.css";
 import "./styles/components.css";
 import "./styles/utilities.css";
 import "./styles/recordings.css";
+import "./styles/timeline.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
