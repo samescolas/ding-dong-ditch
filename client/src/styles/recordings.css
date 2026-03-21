@@ -430,3 +430,28 @@
 }
 .skeleton-card__line--short { width: 60%; }
 .skeleton-card__line--tiny { width: 30%; height: 12px; }
+
+/* Timeline top bar */
+.timeline-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.timeline-top-bar__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+/* View toggle button */
+.view-toggle {
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+  padding: var(--space-1) var(--space-3);
+}
+.view-toggle:hover {
+  color: var(--color-fg-default);
+}

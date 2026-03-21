@@ -129,22 +129,30 @@ export default function RecordingsTab() {
         title="Recordings"
         subtitle={total > 0 ? `${total} recording${total !== 1 ? "s" : ""}` : undefined}
         action={
-          total > 0 ? (
-            isSelectMode ? (
-              <button className="btn" onClick={clearSelection}>Cancel</button>
-            ) : (
-              <div className="page-header__actions">
-                <button
-                  className="btn"
-                  onClick={handleRedescribe}
-                  disabled={isRedescribing}
-                >
-                  {isRedescribing ? "Re-describing..." : "Re-describe"}
-                </button>
-                <button className="btn" onClick={() => setIsSelectMode(true)}>Select</button>
-              </div>
-            )
-          ) : undefined
+          <div className="page-header__actions">
+            <button
+              className="btn btn-ghost view-toggle"
+              onClick={() => { window.location.hash = "recordings"; }}
+            >
+              Timeline
+            </button>
+            {total > 0 && (
+              isSelectMode ? (
+                <button className="btn" onClick={clearSelection}>Cancel</button>
+              ) : (
+                <>
+                  <button
+                    className="btn"
+                    onClick={handleRedescribe}
+                    disabled={isRedescribing}
+                  >
+                    {isRedescribing ? "Re-describing..." : "Re-describe"}
+                  </button>
+                  <button className="btn" onClick={() => setIsSelectMode(true)}>Select</button>
+                </>
+              )
+            )}
+          </div>
         }
       />
 
