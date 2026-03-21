@@ -78,7 +78,8 @@
   z-index: 2;
   transform: translateX(-50%);
   transition: opacity var(--duration-fast) var(--ease-default),
-              box-shadow var(--duration-fast) var(--ease-default);
+              box-shadow var(--duration-fast) var(--ease-default),
+              transform var(--duration-fast) var(--ease-default);
   padding: 0;
 }
 
@@ -94,7 +95,21 @@
 
 .timeline-bar__block:hover {
   opacity: 0.85;
+  transform: translateX(-50%) scaleY(1.1);
+  z-index: 5;
+}
+
+.timeline-bar__block--motion:hover {
   box-shadow: 0 0 8px rgba(88, 166, 255, 0.4);
+}
+
+.timeline-bar__block--doorbell:hover {
+  box-shadow: 0 0 8px rgba(210, 153, 34, 0.4);
+}
+
+.timeline-bar__block:focus-visible {
+  outline: 2px solid var(--color-fg-accent);
+  outline-offset: 2px;
 }
 
 .timeline-bar__block--selected {
@@ -104,6 +119,10 @@
 
 .timeline-bar__block--doorbell.timeline-bar__block--selected {
   box-shadow: 0 0 0 2px var(--color-attention-fg);
+}
+
+.timeline-bar__block--stacked {
+  height: 22px;
 }
 
 /* Scrubber line */
