@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { Recording, PaginatedResult, RecordingFilters } from "../types/recording";
+import { CAMERA_STORAGE_KEY } from "./useTimeline";
 
 const PAGE_SIZE = 20;
 
@@ -8,27 +9,34 @@ export function useRecordings() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [cameras, setCameras] = useState<string[]>([]);
-  const [filters, setFilters] = useState<RecordingFilters>({
-    camera: "",
+  const [filters, setFilters] = useState<RecordingFilters>(() => ({
+    camera: localStorage.getItem(CAMERA_STORAGE_KEY) ?? "",
     dateFrom: "",
     dateTo: "",
     search: "",
     eventType: "",
-  });
+  }));
   const [searchInput, setSearchInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Fetch camera list
+  // Fetch camera list; validate persisted camera against available cameras
   useEffect(() => {
     fetch("/api/recordings/cameras")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch cameras");
         return res.json();
       })
-      .then((data: string[]) => setCameras(data))
+      .then((data: string[]) => {
+        setCameras(data);
+        // If persisted camera is not in the available list, clear the filter
+        const saved = localStorage.getItem(CAMERA_STORAGE_KEY);
+        if (saved && !data.includes(saved)) {
+          setFilters((prev) => ({ ...prev, camera: "" }));
+        }
+      })
       .catch((err: Error) => console.warn("[recordings] camera list unavailable:", err.message));
   }, []);
 
@@ -74,6 +82,13 @@ export function useRecordings() {
     loadRecordings();
     return () => abortRef.current?.abort();
   }, [loadRecordings]);
+
+  // Persist camera filter to localStorage so timeline view picks it up
+  useEffect(() => {
+    if (filters.camera) {
+      localStorage.setItem(CAMERA_STORAGE_KEY, filters.camera);
+    }
+  }, [filters.camera]);
 
   const updateFilter = useCallback((key: keyof RecordingFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
