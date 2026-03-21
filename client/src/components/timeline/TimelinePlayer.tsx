@@ -40,14 +40,14 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function eventLabel(eventType: string): string {
+function eventLabel(eventType: string | null): string {
   switch (eventType) {
     case "doorbell":
       return "Doorbell ring";
     case "motion":
       return "Motion";
     default:
-      return eventType;
+      return eventType ?? "Event";
   }
 }
 
