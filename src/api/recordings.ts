@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { getStorage } from "../storage/index.js";
-import { queryRecordings, deleteRecordingByPath, getRecordingByPath, getDistinctCameras } from "../db/recordings.js";
+import { queryRecordings, queryTimelineRecordings, deleteRecordingByPath, getRecordingByPath, getDistinctCameras } from "../db/recordings.js";
 import { isAiEnabled } from "../ai/describe.js";
 import { redescribeRecordings, isRedescribeRunning } from "../ai/redescribe.js";
 import { log } from "../logger.js";
@@ -77,6 +77,26 @@ router.post("/redescribe", async (_req: Request, res: Response) => {
   } catch (e) {
     log.error("[recordings] redescribe error:", (e as Error).message);
     res.status(500).json({ error: "failed to redescribe recordings" });
+  }
+});
+
+// Timeline recordings (lightweight)
+router.get("/timeline", (_req: Request, res: Response) => {
+  try {
+    const { camera, from, to, eventType } = _req.query;
+    if (!camera || !from || !to) {
+      return res.status(400).json({ error: "camera, from, and to are required" });
+    }
+    const data = queryTimelineRecordings(
+      camera as string,
+      from as string,
+      to as string,
+      eventType as string | undefined,
+    );
+    res.json(data);
+  } catch (e) {
+    log.error("[recordings] timeline error:", (e as Error).message);
+    res.status(500).json({ error: "failed to query timeline" });
   }
 });
 

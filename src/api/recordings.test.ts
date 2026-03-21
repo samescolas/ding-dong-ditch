@@ -387,6 +387,83 @@ describe("recordings API", () => {
     expect(res.body.error).toBe("paths must be a non-empty array");
   });
 
+  // --- Timeline endpoint ---
+
+  it("GET /timeline returns timeline recordings for a camera and time range", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Front_Door&from=2024-01-15T00:00:00&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(2);
+    // Verify lightweight shape
+    for (const rec of res.body) {
+      expect(rec).toHaveProperty("id");
+      expect(rec).toHaveProperty("timestamp");
+      expect(rec).toHaveProperty("event_type");
+      expect(rec).toHaveProperty("snapshot_key");
+      expect(rec).toHaveProperty("path");
+      expect(rec).not.toHaveProperty("description");
+      expect(rec).not.toHaveProperty("size");
+    }
+  });
+
+  it("GET /timeline returns 400 when camera is missing", async () => {
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?from=2024-01-15T00:00:00&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("camera, from, and to are required");
+  });
+
+  it("GET /timeline returns 400 when from is missing", async () => {
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Front_Door&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("camera, from, and to are required");
+  });
+
+  it("GET /timeline returns 400 when to is missing", async () => {
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Front_Door&from=2024-01-15T00:00:00"
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("camera, from, and to are required");
+  });
+
+  it("GET /timeline filters by eventType", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Front_Door&from=2024-01-15T00:00:00&to=2024-01-16T23:59:59&eventType=doorbell"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].event_type).toBe("doorbell");
+  });
+
+  it("GET /timeline returns empty array when no recordings match", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Nonexistent&from=2024-01-15T00:00:00&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
   it("POST /bulk-delete rejects more than 500 paths", async () => {
     const app = buildApp();
     const paths = Array.from({ length: 501 }, (_, i) =>
