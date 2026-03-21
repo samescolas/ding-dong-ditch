@@ -1,4 +1,5 @@
 import { useTimeline } from "../../hooks/useTimeline";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import TimelineTopBar from "./TimelineTopBar";
 import TimelinePlayer from "./TimelinePlayer";
 import TimelineBar from "./TimelineBar";
@@ -21,6 +22,8 @@ export default function TimelineView() {
     error,
     reload,
   } = useTimeline();
+
+  useKeyboardShortcuts({ recordings, selectedRecording, setSelectedRecording });
 
   return (
     <div className="timeline-view">
