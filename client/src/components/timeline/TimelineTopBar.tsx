@@ -1,4 +1,5 @@
 import "./TimelineTopBar.css";
+import type { TimeRange } from "./TimelineBar";
 
 export type TimePreset = "1h" | "24h" | "7d" | "custom";
 export type EventTypeFilter = "" | "doorbell" | "motion";
@@ -15,6 +16,8 @@ interface TimelineTopBarProps {
   onCameraChange: (camera: string) => void;
   timePreset: TimePreset;
   onTimePresetChange: (preset: TimePreset) => void;
+  timeRange: TimeRange;
+  onCustomTimeRangeChange: (range: TimeRange) => void;
   eventType: EventTypeFilter;
   onEventTypeChange: (type: EventTypeFilter) => void;
   counts?: EventCounts | null;
@@ -27,12 +30,19 @@ const TIME_PRESETS: { value: TimePreset; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
+function toDatetimeLocal(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function TimelineTopBar({
   cameras,
   selectedCamera,
   onCameraChange,
   timePreset,
   onTimePresetChange,
+  timeRange,
+  onCustomTimeRangeChange,
   eventType,
   onEventTypeChange,
   counts,
@@ -90,6 +100,42 @@ export default function TimelineTopBar({
           </button>
         ))}
       </div>
+
+      {/* Custom date-time range picker */}
+      {timePreset === "custom" && (
+        <div className="timeline-top-bar__custom-range">
+          <label className="timeline-top-bar__custom-label">
+            From
+            <input
+              type="datetime-local"
+              className="timeline-top-bar__datetime-input"
+              value={toDatetimeLocal(timeRange.from)}
+              max={toDatetimeLocal(timeRange.to)}
+              onChange={(e) => {
+                const from = new Date(e.target.value);
+                if (!isNaN(from.getTime())) {
+                  onCustomTimeRangeChange({ from, to: timeRange.to });
+                }
+              }}
+            />
+          </label>
+          <label className="timeline-top-bar__custom-label">
+            To
+            <input
+              type="datetime-local"
+              className="timeline-top-bar__datetime-input"
+              value={toDatetimeLocal(timeRange.to)}
+              min={toDatetimeLocal(timeRange.from)}
+              onChange={(e) => {
+                const to = new Date(e.target.value);
+                if (!isNaN(to.getTime())) {
+                  onCustomTimeRangeChange({ from: timeRange.from, to });
+                }
+              }}
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }

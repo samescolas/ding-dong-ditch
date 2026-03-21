@@ -96,6 +96,38 @@
   color: var(--color-fg-accent);
 }
 
+/* Custom date-time range picker */
+.timeline-top-bar__custom-range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding-top: var(--space-2);
+}
+
+.timeline-top-bar__custom-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+}
+
+.timeline-top-bar__datetime-input {
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-fg-default);
+  font-size: var(--text-sm);
+  color-scheme: dark;
+}
+
+.timeline-top-bar__datetime-input:focus {
+  outline: 2px solid var(--color-fg-accent);
+  outline-offset: 1px;
+}
+
 /* Responsive: wrap on smaller screens */
 @media (max-width: 768px) {
   .timeline-top-bar {
