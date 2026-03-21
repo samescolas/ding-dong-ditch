@@ -9,13 +9,30 @@
 
 .timeline-player__empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 320px;
   color: var(--color-fg-muted);
-  font-size: var(--text-base);
-  padding: var(--space-6);
+  padding: var(--space-12) var(--space-6);
   text-align: center;
+}
+
+.timeline-player__empty-icon {
+  opacity: 0.4;
+  margin-bottom: var(--space-4);
+}
+
+.timeline-player__empty-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+  margin-bottom: var(--space-2);
+}
+
+.timeline-player__empty-subtitle {
+  font-size: var(--text-sm);
+  max-width: 360px;
 }
 
 .timeline-player__error {
