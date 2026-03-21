@@ -1,96 +1,57 @@
-import { useRef, useLayoutEffect, useState } from "react";
-import type { TimelineRecording } from "./TimelineBar";
-import "./HoverPreview.css";
+import { useState } from "react";
+import type { Recording } from "../../types/recording";
 
 interface HoverPreviewProps {
-  recording: TimelineRecording;
-  position: { x: number; y: number };
-  onClose: () => void;
+  recording: Recording;
 }
 
-const TOOLTIP_WIDTH = 240;
-const TOOLTIP_MARGIN = 8;
+export default function HoverPreview({ recording }: HoverPreviewProps) {
+  const [imgStatus, setImgStatus] = useState<"loading" | "loaded" | "error">(
+    recording.snapshot_key ? "loading" : "error"
+  );
 
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-}
-
-function eventLabel(eventType: string | null): string {
-  if (!eventType) return "Unknown";
-  return eventType.charAt(0).toUpperCase() + eventType.slice(1);
-}
-
-function truncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  return text.slice(0, max).trimEnd() + "\u2026";
-}
-
-export function HoverPreview({ recording, position, onClose }: HoverPreviewProps) {
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const [adjustedPos, setAdjustedPos] = useState<{ left: number; top: number }>({
-    left: position.x,
-    top: position.y,
-  });
-
-  useLayoutEffect(() => {
-    const el = tooltipRef.current;
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    let left = position.x - rect.width / 2;
-    let top = position.y - rect.height - TOOLTIP_MARGIN;
-
-    // Keep within horizontal bounds
-    if (left < TOOLTIP_MARGIN) left = TOOLTIP_MARGIN;
-    if (left + rect.width > vw - TOOLTIP_MARGIN) left = vw - TOOLTIP_MARGIN - rect.width;
-
-    // If no room above, show below
-    if (top < TOOLTIP_MARGIN) top = position.y + TOOLTIP_MARGIN;
-
-    // Keep within vertical bounds
-    if (top + rect.height > vh - TOOLTIP_MARGIN) top = vh - TOOLTIP_MARGIN - rect.height;
-
-    setAdjustedPos({ left, top });
-  }, [position.x, position.y]);
-
-  const eventType = recording.event_type ?? "unknown";
-  const badgeClass = `hover-preview__badge hover-preview__badge--${eventType}`;
-  const description = truncate(recording.path, 100);
+  const showPlaceholder = !recording.snapshot_key || imgStatus === "error";
 
   return (
-    <div
-      ref={tooltipRef}
-      className="hover-preview"
-      style={{ left: adjustedPos.left, top: adjustedPos.top, width: TOOLTIP_WIDTH }}
-      role="tooltip"
-      onMouseLeave={onClose}
-    >
+    <div className="hover-preview">
       <div className="hover-preview__thumbnail">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <polyline points="8 21 12 17 16 21" />
-        </svg>
+        {recording.snapshot_key && imgStatus !== "error" && (
+          <img
+            className={`hover-preview__img${imgStatus === "loading" ? " hover-preview__img--loading" : ""}`}
+            src={`/api/recordings/${recording.snapshot_key}`}
+            alt={`Snapshot from ${recording.camera}`}
+            width={120}
+            height={80}
+            onLoad={() => setImgStatus("loaded")}
+            onError={() => setImgStatus("error")}
+          />
+        )}
+        {imgStatus === "loading" && (
+          <div className="hover-preview__shimmer" aria-hidden="true" />
+        )}
+        {showPlaceholder && (
+          <div className="hover-preview__placeholder" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="28"
+              height="28"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </div>
+        )}
       </div>
       <div className="hover-preview__info">
-        <div className="hover-preview__header">
-          <span className="hover-preview__time">{formatTimestamp(recording.timestamp)}</span>
-          <span className={badgeClass}>{eventLabel(recording.event_type)}</span>
-        </div>
-        <p className="hover-preview__description">{description}</p>
+        <span className="hover-preview__camera">{recording.camera}</span>
+        {recording.event_type && (
+          <span className="hover-preview__event">{recording.event_type}</span>
+        )}
       </div>
     </div>
   );
