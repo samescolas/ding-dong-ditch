@@ -1,10 +1,15 @@
+<<<<<<< HEAD
 import { useEffect, useRef } from "react";
 import { useTimeline } from "../../hooks/useTimeline";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
+=======
+import { useTimeline } from "../../hooks/useTimeline";
+>>>>>>> worktree-agent-ae373975
 import TimelineTopBar from "./TimelineTopBar";
 import TimelinePlayer from "./TimelinePlayer";
 import TimelineBar from "./TimelineBar";
 
+<<<<<<< HEAD
 function parseHashRecordingId(): number | null {
   const qs = window.location.hash.split("?")[1] || "";
   const params = new URLSearchParams(qs);
@@ -14,6 +19,8 @@ function parseHashRecordingId(): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
+=======
+>>>>>>> worktree-agent-ae373975
 export default function TimelineView() {
   const {
     cameras,
@@ -33,6 +40,7 @@ export default function TimelineView() {
     reload,
   } = useTimeline();
 
+<<<<<<< HEAD
   useKeyboardShortcuts({ recordings, selectedRecording, setSelectedRecording });
 
   const hasRestoredRef = useRef(false);
@@ -60,6 +68,8 @@ export default function TimelineView() {
     }
   }, [selectedRecording]);
 
+=======
+>>>>>>> worktree-agent-ae373975
   return (
     <div className="timeline-view">
       <TimelineTopBar
