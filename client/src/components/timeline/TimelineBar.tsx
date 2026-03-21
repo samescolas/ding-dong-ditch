@@ -35,13 +35,18 @@ function formatTimeLabel(date: Date, rangeDays: number): string {
 }
 
 function getMarkerInterval(rangeDays: number): number {
-  if (rangeDays <= 0.1) return 5 * 60 * 1000;       // <=~2.4h: every 5 min
-  if (rangeDays <= 1.5) return 60 * 60 * 1000;       // <=1.5 days: every 1 hour
-  if (rangeDays <= 4) return 6 * 60 * 60 * 1000;     // <=4 days: every 6 hours
-  return 24 * 60 * 60 * 1000;                         // >4 days: every day
+  if (rangeDays <= 0.1) return 5 * 60 * 1000;         // <=~2.4h: every 5 min
+  if (rangeDays <= 0.25) return 15 * 60 * 1000;       // <=6h: every 15 min
+  if (rangeDays <= 0.5) return 30 * 60 * 1000;        // <=12h: every 30 min
+  if (rangeDays <= 1.5) return 60 * 60 * 1000;        // <=1.5 days: every 1 hour
+  if (rangeDays <= 4) return 6 * 60 * 60 * 1000;      // <=4 days: every 6 hours
+  return 24 * 60 * 60 * 1000;                          // >4 days: every day
 }
 
-function computeMarkers(timeRange: TimeRange): TimeMarker[] {
+/** Minimum pixel spacing between marker labels to prevent overlap */
+const MIN_MARKER_SPACING_PX = 60;
+
+function computeMarkers(timeRange: TimeRange, trackWidthPx: number): TimeMarker[] {
   const rangeMs = timeRange.to.getTime() - timeRange.from.getTime();
   const rangeDays = rangeMs / (24 * 60 * 60 * 1000);
   const interval = getMarkerInterval(rangeDays);
@@ -57,6 +62,19 @@ function computeMarkers(timeRange: TimeRange): TimeMarker[] {
       label: formatTimeLabel(time, rangeDays),
       position,
     });
+  }
+
+  // Filter out markers that would overlap based on pixel spacing
+  if (trackWidthPx > 0 && markers.length > 1) {
+    const filtered: TimeMarker[] = [markers[0]];
+    for (let i = 1; i < markers.length; i++) {
+      const prevPx = (filtered[filtered.length - 1].position / 100) * trackWidthPx;
+      const currPx = (markers[i].position / 100) * trackWidthPx;
+      if (currPx - prevPx >= MIN_MARKER_SPACING_PX) {
+        filtered.push(markers[i]);
+      }
+    }
+    return filtered;
   }
 
   return markers;
@@ -141,14 +159,13 @@ export default function TimelineBar({
   });
   const [isDragging, setIsDragging] = useState(false);
 
-  const markers = useMemo(() => computeMarkers(timeRange), [timeRange]);
-  const nowPosition = useMemo(() => getNowPosition(timeRange), [timeRange]);
-
   const rangeMs = timeRange.to.getTime() - timeRange.from.getTime();
   const fromMs = timeRange.from.getTime();
-
   const rangeHours = rangeMs / (1000 * 60 * 60);
   const trackWidth = Math.max(rangeHours * PIXELS_PER_HOUR, 100);
+
+  const markers = useMemo(() => computeMarkers(timeRange, trackWidth), [timeRange, trackWidth]);
+  const nowPosition = useMemo(() => getNowPosition(timeRange), [timeRange]);
 
   const blockLayouts = useMemo(() => {
     return computeBlockLayouts(recordings, rangeMs, fromMs, trackWidth);
