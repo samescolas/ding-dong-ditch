@@ -153,5 +153,5 @@
   z-index: 3;
   pointer-events: none;
   opacity: 0.7;
-  transition: left var(--duration-normal, 200ms) var(--ease-default, ease);
+  transition: left var(--duration-fast) var(--ease-default);
 }

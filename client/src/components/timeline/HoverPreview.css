@@ -7,6 +7,18 @@
   box-shadow: var(--shadow-md);
   overflow: hidden;
   pointer-events: auto;
+  animation: hover-preview-fade-in var(--duration-normal) var(--ease-default);
+}
+
+@keyframes hover-preview-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hover-preview__thumbnail {
