@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTimeline } from "../../hooks/useTimeline";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import TimelineTopBar from "./TimelineTopBar";
 import TimelinePlayer from "./TimelinePlayer";
 import TimelineBar from "./TimelineBar";
@@ -32,6 +33,8 @@ export default function TimelineView() {
     reload,
   } = useTimeline();
 
+  useKeyboardShortcuts({ recordings, selectedRecording, setSelectedRecording });
+
   const hasRestoredRef = useRef(false);
 
   // On mount, restore selection from URL hash
@@ -46,7 +49,6 @@ export default function TimelineView() {
     if (match) {
       setSelectedRecording(match);
     }
-    // If no match, gracefully do nothing (empty state)
   }, [loading, recordings, setSelectedRecording]);
 
   // Sync selectedRecording changes to URL hash
@@ -54,7 +56,6 @@ export default function TimelineView() {
     if (selectedRecording) {
       window.location.hash = `recordings?id=${selectedRecording.id}`;
     } else if (hasRestoredRef.current) {
-      // Only update hash after initial restore to avoid clearing hash on mount
       window.location.hash = "recordings";
     }
   }, [selectedRecording]);
