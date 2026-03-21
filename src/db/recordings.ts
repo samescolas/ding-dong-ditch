@@ -142,6 +142,41 @@ export function getRecordingsWithoutDescription(limit: number): RecordingRow[] {
     .all(limit) as RecordingRow[];
 }
 
+export interface TimelineRecording {
+  id: number;
+  timestamp: string;
+  event_type: string | null;
+  snapshot_key: string | null;
+  path: string;
+}
+
+export function queryTimelineRecordings(
+  camera: string,
+  from: string,
+  to: string,
+  eventType?: string
+): TimelineRecording[] {
+  const db = getDb();
+  const conditions: string[] = [
+    "camera = @camera",
+    "timestamp >= @from",
+    "timestamp <= @to",
+  ];
+  const params: Record<string, string> = { camera, from, to };
+
+  if (eventType) {
+    conditions.push("event_type = @eventType");
+    params.eventType = eventType;
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+  return db
+    .prepare(
+      `SELECT id, timestamp, event_type, snapshot_key, path FROM recordings ${whereClause} ORDER BY timestamp ASC`
+    )
+    .all(params) as TimelineRecording[];
+}
+
 export function updateRecordingDescription(
   id: number,
   description: string,

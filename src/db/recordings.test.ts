@@ -3,6 +3,7 @@ import { initTestDb, closeDb } from "./index.js";
 import {
   insertRecording,
   queryRecordings,
+  queryTimelineRecordings,
   deleteRecordingByPath,
   deleteRecordingsOlderThan,
   getDistinctCameras,
@@ -181,5 +182,48 @@ describe("recordings DB", () => {
     seed();
     const rec = getRecordingByPath("does/not/exist.mp4");
     expect(rec).toBeNull();
+  });
+
+  describe("queryTimelineRecordings", () => {
+    it("returns lightweight fields ordered by timestamp ASC", () => {
+      seed();
+      const results = queryTimelineRecordings("Front_Door", "2024-01-01T00:00:00", "2024-12-31T23:59:59");
+      expect(results).toHaveLength(2);
+      // ASC order
+      expect(results[0].timestamp).toBe("2024-01-15T10:00:00");
+      expect(results[1].timestamp).toBe("2024-01-16T09:00:00");
+      // Only lightweight fields
+      expect(results[0]).toHaveProperty("id");
+      expect(results[0]).toHaveProperty("timestamp");
+      expect(results[0]).toHaveProperty("event_type");
+      expect(results[0]).toHaveProperty("snapshot_key");
+      expect(results[0]).toHaveProperty("path");
+      expect(results[0]).not.toHaveProperty("description");
+      expect(results[0]).not.toHaveProperty("size");
+    });
+
+    it("filters by eventType", () => {
+      seed();
+      const doorbells = queryTimelineRecordings("Front_Door", "2024-01-01T00:00:00", "2024-12-31T23:59:59", "doorbell");
+      expect(doorbells).toHaveLength(1);
+      expect(doorbells[0].event_type).toBe("doorbell");
+
+      const motions = queryTimelineRecordings("Front_Door", "2024-01-01T00:00:00", "2024-12-31T23:59:59", "motion");
+      expect(motions).toHaveLength(1);
+      expect(motions[0].event_type).toBe("motion");
+    });
+
+    it("returns empty array for no matches", () => {
+      seed();
+      const results = queryTimelineRecordings("Nonexistent", "2024-01-01T00:00:00", "2024-12-31T23:59:59");
+      expect(results).toEqual([]);
+    });
+
+    it("respects time range boundaries", () => {
+      seed();
+      const results = queryTimelineRecordings("Front_Door", "2024-01-16T00:00:00", "2024-01-16T23:59:59");
+      expect(results).toHaveLength(1);
+      expect(results[0].timestamp).toBe("2024-01-16T09:00:00");
+    });
   });
 });
