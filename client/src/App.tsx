@@ -12,7 +12,8 @@ type RecordingsView = "timeline" | "grid";
 const VALID_TABS: Tab[] = ["auth", "cameras", "settings", "recordings"];
 
 function parseHash(): { tab: Tab | null; recordingsView: RecordingsView } {
-  const hash = window.location.hash.replace("#", "");
+  const raw = window.location.hash.replace("#", "");
+  const hash = raw.split("?")[0];
 
   if (hash === "recordings" || hash === "recordings/") {
     return { tab: "recordings", recordingsView: "timeline" };

@@ -1,7 +1,17 @@
+import { useEffect, useRef } from "react";
 import { useTimeline } from "../../hooks/useTimeline";
 import TimelineTopBar from "./TimelineTopBar";
 import TimelinePlayer from "./TimelinePlayer";
 import TimelineBar from "./TimelineBar";
+
+function parseHashRecordingId(): number | null {
+  const qs = window.location.hash.split("?")[1] || "";
+  const params = new URLSearchParams(qs);
+  const raw = params.get("id");
+  if (raw === null) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) ? id : null;
+}
 
 export default function TimelineView() {
   const {
@@ -21,6 +31,33 @@ export default function TimelineView() {
     error,
     reload,
   } = useTimeline();
+
+  const hasRestoredRef = useRef(false);
+
+  // On mount, restore selection from URL hash
+  useEffect(() => {
+    if (hasRestoredRef.current || loading || recordings.length === 0) return;
+    hasRestoredRef.current = true;
+
+    const id = parseHashRecordingId();
+    if (id === null) return;
+
+    const match = recordings.find((r) => r.id === id);
+    if (match) {
+      setSelectedRecording(match);
+    }
+    // If no match, gracefully do nothing (empty state)
+  }, [loading, recordings, setSelectedRecording]);
+
+  // Sync selectedRecording changes to URL hash
+  useEffect(() => {
+    if (selectedRecording) {
+      window.location.hash = `recordings?id=${selectedRecording.id}`;
+    } else if (hasRestoredRef.current) {
+      // Only update hash after initial restore to avoid clearing hash on mount
+      window.location.hash = "recordings";
+    }
+  }, [selectedRecording]);
 
   return (
     <div className="timeline-view">
