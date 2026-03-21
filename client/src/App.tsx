@@ -12,12 +12,8 @@ type RecordingsView = "timeline" | "grid";
 const VALID_TABS: Tab[] = ["auth", "cameras", "settings", "recordings"];
 
 function parseHash(): { tab: Tab | null; recordingsView: RecordingsView } {
-<<<<<<< HEAD
   const raw = window.location.hash.replace("#", "");
   const hash = raw.split("?")[0];
-=======
-  const hash = window.location.hash.replace("#", "");
->>>>>>> worktree-agent-ae373975
 
   if (hash === "recordings" || hash === "recordings/") {
     return { tab: "recordings", recordingsView: "timeline" };

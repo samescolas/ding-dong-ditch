@@ -8,12 +8,7 @@ export interface RecordingCounts {
   total: number;
 }
 
-<<<<<<< HEAD
 const CAMERA_STORAGE_KEY = "timeline-selected-camera";
-=======
-export const CAMERA_STORAGE_KEY = "timeline-selected-camera";
-export const TIME_PRESET_STORAGE_KEY = "timeline-time-preset";
->>>>>>> worktree-agent-ae373975
 
 function computeTimeRange(preset: TimePreset): TimeRange {
   const to = new Date();
@@ -26,28 +21,12 @@ function computeTimeRange(preset: TimePreset): TimeRange {
   return { from: new Date(to.getTime() - ms), to };
 }
 
-<<<<<<< HEAD
-=======
-function loadTimePreset(): TimePreset {
-  const saved = localStorage.getItem(TIME_PRESET_STORAGE_KEY);
-  if (saved === "1h" || saved === "24h" || saved === "7d" || saved === "custom") {
-    return saved;
-  }
-  return "24h";
-}
-
->>>>>>> worktree-agent-ae373975
 export function useTimeline() {
   const [cameras, setCameras] = useState<string[]>([]);
   const [camera, setCamera] = useState<string>("");
   const [eventType, setEventType] = useState<string>("");
-<<<<<<< HEAD
   const [timePreset, setTimePresetState] = useState<TimePreset>("24h");
   const [timeRange, setTimeRange] = useState<TimeRange>(() => computeTimeRange("24h"));
-=======
-  const [timePreset, setTimePresetState] = useState<TimePreset>(() => loadTimePreset());
-  const [timeRange, setTimeRange] = useState<TimeRange>(() => computeTimeRange(loadTimePreset()));
->>>>>>> worktree-agent-ae373975
   const [recordings, setRecordings] = useState<TimelineRecording[]>([]);
   const [counts, setCounts] = useState<RecordingCounts>({ motion: 0, doorbell: 0, total: 0 });
   const [selectedRecording, setSelectedRecording] = useState<TimelineRecording | null>(null);
@@ -87,14 +66,6 @@ export function useTimeline() {
     }
   }, [camera]);
 
-<<<<<<< HEAD
-=======
-  // Persist time preset selection
-  useEffect(() => {
-    localStorage.setItem(TIME_PRESET_STORAGE_KEY, timePreset);
-  }, [timePreset]);
-
->>>>>>> worktree-agent-ae373975
   // Fetch timeline recordings and counts when params change
   const fetchData = useCallback(async () => {
     if (!camera) return;
