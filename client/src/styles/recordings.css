@@ -431,27 +431,92 @@
 .skeleton-card__line--short { width: 60%; }
 .skeleton-card__line--tiny { width: 30%; height: 12px; }
 
-/* Timeline top bar */
-.timeline-top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-.timeline-top-bar__filters {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex: 1;
+/* Recordings page (grid view content) */
+.recordings-page {
+  padding-top: var(--space-4);
 }
 
-/* View toggle button */
-.view-toggle {
-  font-size: var(--text-sm);
-  color: var(--color-fg-muted);
-  padding: var(--space-1) var(--space-3);
+/* Recordings page actions (grid view) */
+.recordings-page__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
 }
-.view-toggle:hover {
+
+/* Recordings layout */
+.recordings-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* View tabs (Timeline / Grid toggle) */
+.view-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-bg-default);
+}
+
+.view-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--duration-fast) var(--ease-default);
+  white-space: nowrap;
+}
+
+.view-tabs__tab::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  border-radius: 1px 1px 0 0;
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.view-tabs__tab:hover {
   color: var(--color-fg-default);
+}
+
+.view-tabs__tab--active {
+  color: var(--color-fg-default);
+}
+
+.view-tabs__tab--active::after {
+  background: var(--color-fg-accent);
+}
+
+.view-tabs__tab:focus-visible {
+  outline: 2px solid var(--color-fg-accent);
+  outline-offset: -2px;
+}
+
+.view-tabs__tab svg {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .view-tabs {
+    padding: 0 var(--space-3);
+  }
+  .view-tabs__tab {
+    padding: var(--space-2) var(--space-3);
+    flex: 1;
+    justify-content: center;
+  }
 }

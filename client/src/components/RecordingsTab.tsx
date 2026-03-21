@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useRecordings } from "../hooks/useRecordings";
 import { useToast } from "../contexts/ToastContext";
 import type { Recording } from "../types/recording";
-import PageHeader from "./PageHeader";
 import EmptyState from "./EmptyState";
 import ConfirmDialog from "./ConfirmDialog";
 import FilterBar from "./recordings/FilterBar";
@@ -125,36 +124,24 @@ export default function RecordingsTab() {
 
   return (
     <div className="recordings-page">
-      <PageHeader
-        title="Recordings"
-        subtitle={total > 0 ? `${total} recording${total !== 1 ? "s" : ""}` : undefined}
-        action={
-          <div className="page-header__actions">
-            <button
-              className="btn btn-ghost view-toggle"
-              onClick={() => { window.location.hash = "recordings"; }}
-            >
-              Timeline
-            </button>
-            {total > 0 && (
-              isSelectMode ? (
-                <button className="btn" onClick={clearSelection}>Cancel</button>
-              ) : (
-                <>
-                  <button
-                    className="btn"
-                    onClick={handleRedescribe}
-                    disabled={isRedescribing}
-                  >
-                    {isRedescribing ? "Re-describing..." : "Re-describe"}
-                  </button>
-                  <button className="btn" onClick={() => setIsSelectMode(true)}>Select</button>
-                </>
-              )
-            )}
-          </div>
-        }
-      />
+      {total > 0 && (
+        <div className="recordings-page__actions">
+          {isSelectMode ? (
+            <button className="btn" onClick={clearSelection}>Cancel</button>
+          ) : (
+            <>
+              <button
+                className="btn"
+                onClick={handleRedescribe}
+                disabled={isRedescribing}
+              >
+                {isRedescribing ? "Re-describing..." : "Re-describe"}
+              </button>
+              <button className="btn" onClick={() => setIsSelectMode(true)}>Select</button>
+            </>
+          )}
+        </div>
+      )}
 
       <FilterBar
         cameras={cameras}

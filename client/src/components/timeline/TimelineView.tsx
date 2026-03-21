@@ -24,6 +24,7 @@ export default function TimelineView() {
     timePreset,
     setTimePreset,
     timeRange,
+    setCustomTimeRange,
     recordings,
     counts,
     selectedRecording,
@@ -68,6 +69,8 @@ export default function TimelineView() {
         onCameraChange={setCamera}
         timePreset={timePreset}
         onTimePresetChange={setTimePreset}
+        onCustomTimeRange={setCustomTimeRange}
+        timeRange={timeRange}
         eventType={eventType as "" | "doorbell" | "motion"}
         onEventTypeChange={setEventType}
         counts={counts}

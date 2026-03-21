@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Navigation from "./components/Navigation";
+import PageHeader from "./components/PageHeader";
 import AuthTab from "./components/AuthTab";
 import CamerasTab from "./components/CamerasTab";
 import SettingsTab from "./components/SettingsTab";
@@ -110,23 +111,44 @@ export default function App() {
           {activeTab === "cameras" && <CamerasTab connected={connected} />}
           {activeTab === "settings" && <SettingsTab />}
           {activeTab === "recordings" && (
-            <>
-              <div className="recordings-view-toggle">
+            <div className="recordings-layout">
+              <PageHeader title="Recordings" />
+              <div className="view-tabs" role="tablist" aria-label="Recordings view">
                 <button
-                  className={`btn btn-sm${recordingsView === "timeline" ? " btn--active" : ""}`}
+                  className={`view-tabs__tab${recordingsView === "timeline" ? " view-tabs__tab--active" : ""}`}
                   onClick={() => switchRecordingsView("timeline")}
+                  role="tab"
+                  aria-selected={recordingsView === "timeline"}
+                  aria-controls="recordings-panel"
                 >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/>
+                    <rect x="3" y="4" width="3" height="5" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="7" y="5" width="3" height="4" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="11" y="3" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                  </svg>
                   Timeline
                 </button>
                 <button
-                  className={`btn btn-sm${recordingsView === "grid" ? " btn--active" : ""}`}
+                  className={`view-tabs__tab${recordingsView === "grid" ? " view-tabs__tab--active" : ""}`}
                   onClick={() => switchRecordingsView("grid")}
+                  role="tab"
+                  aria-selected={recordingsView === "grid"}
+                  aria-controls="recordings-panel"
                 >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                  </svg>
                   Grid
                 </button>
               </div>
-              {recordingsView === "timeline" ? <TimelineView /> : <RecordingsTab />}
-            </>
+              <div id="recordings-panel" role="tabpanel">
+                {recordingsView === "timeline" ? <TimelineView /> : <RecordingsTab />}
+              </div>
+            </div>
           )}
         </div>
       </main>
