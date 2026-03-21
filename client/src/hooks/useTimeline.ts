@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { TimelineRecording, TimeRange } from "../components/timeline/TimelineBar";
+import type { TimePreset } from "../components/timeline/TimelineTopBar";
 
 export interface RecordingCounts {
   motion: number;
@@ -9,17 +10,23 @@ export interface RecordingCounts {
 
 const CAMERA_STORAGE_KEY = "timeline-selected-camera";
 
-function defaultTimeRange(): TimeRange {
+function computeTimeRange(preset: TimePreset): TimeRange {
   const to = new Date();
-  const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
-  return { from, to };
+  const msMap: Record<string, number> = {
+    "1h": 60 * 60 * 1000,
+    "24h": 24 * 60 * 60 * 1000,
+    "7d": 7 * 24 * 60 * 60 * 1000,
+  };
+  const ms = msMap[preset] ?? msMap["24h"];
+  return { from: new Date(to.getTime() - ms), to };
 }
 
 export function useTimeline() {
   const [cameras, setCameras] = useState<string[]>([]);
   const [camera, setCamera] = useState<string>("");
   const [eventType, setEventType] = useState<string>("");
-  const [timeRange, setTimeRange] = useState<TimeRange>(defaultTimeRange);
+  const [timePreset, setTimePresetState] = useState<TimePreset>("24h");
+  const [timeRange, setTimeRange] = useState<TimeRange>(() => computeTimeRange("24h"));
   const [recordings, setRecordings] = useState<TimelineRecording[]>([]);
   const [counts, setCounts] = useState<RecordingCounts>({ motion: 0, doorbell: 0, total: 0 });
   const [selectedRecording, setSelectedRecording] = useState<TimelineRecording | null>(null);
@@ -119,6 +126,18 @@ export function useTimeline() {
     return () => abortRef.current?.abort();
   }, [fetchData]);
 
+  const setTimePreset = useCallback((preset: TimePreset) => {
+    setTimePresetState(preset);
+    if (preset !== "custom") {
+      setTimeRange(computeTimeRange(preset));
+    }
+  }, []);
+
+  const setCustomTimeRange = useCallback((range: TimeRange) => {
+    setTimePresetState("custom");
+    setTimeRange(range);
+  }, []);
+
   return {
     recordings,
     loading,
@@ -127,6 +146,9 @@ export function useTimeline() {
     setSelectedRecording,
     timeRange,
     setTimeRange,
+    timePreset,
+    setTimePreset,
+    setCustomTimeRange,
     counts,
     cameras,
     camera,
