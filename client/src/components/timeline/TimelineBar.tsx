@@ -157,6 +157,12 @@ export default function TimelineBar({
     startX: 0,
     startScroll: 0,
   });
+  const touchState = useRef<{
+    active: boolean;
+    startX: number;
+    startScroll: number;
+    isSwiping: boolean;
+  }>({ active: false, startX: 0, startScroll: 0, isSwiping: false });
   const [isDragging, setIsDragging] = useState(false);
 
   const rangeMs = timeRange.to.getTime() - timeRange.from.getTime();
@@ -224,6 +230,62 @@ export default function TimelineBar({
     };
   }, []);
 
+  // Touch drag-to-pan handlers (mirrors mouse drag with tap/scroll threshold)
+  const TOUCH_DRAG_THRESHOLD = 5;
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const touch = e.touches[0];
+    touchState.current = {
+      active: true,
+      startX: touch.clientX,
+      startScroll: el.scrollLeft,
+      isSwiping: false,
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!touchState.current.active) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchState.current.startX;
+
+      // Once past threshold, mark as swiping and prevent default to avoid page scroll
+      if (!touchState.current.isSwiping && Math.abs(dx) > TOUCH_DRAG_THRESHOLD) {
+        touchState.current.isSwiping = true;
+        setIsDragging(true);
+      }
+
+      if (touchState.current.isSwiping) {
+        e.preventDefault();
+        el.scrollLeft = touchState.current.startScroll - dx;
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!touchState.current.active) return;
+      touchState.current.active = false;
+      if (touchState.current.isSwiping) {
+        touchState.current.isSwiping = false;
+        setIsDragging(false);
+      }
+      // If isSwiping was never set, the touch was a tap — click events fire naturally
+    };
+
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, []);
+
   const handleBarClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!onSelect) return;
@@ -240,6 +302,7 @@ export default function TimelineBar({
         className={`timeline-bar__scroll${isDragging ? " timeline-bar__scroll--dragging" : ""}`}
         ref={scrollRef}
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
       <div className="timeline-bar__track" style={{ width: `${trackWidth}px` }}>
         {/* Time markers */}

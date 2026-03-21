@@ -18,6 +18,8 @@
   overflow-x: auto;
   overflow-y: hidden;
   cursor: grab;
+  /* Let JS handle horizontal touch; allow native vertical scroll */
+  touch-action: pan-y;
   /* Hide scrollbar but keep scrolling functional */
   scrollbar-width: none; /* Firefox */
 }
