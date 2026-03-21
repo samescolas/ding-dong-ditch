@@ -1,0 +1,184 @@
+.timeline-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 88px;
+  background: var(--color-bg-default);
+  border-top: 1px solid var(--color-border-default);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  user-select: none;
+}
+
+.timeline-bar__scroll {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+  /* Hide scrollbar but keep scrolling functional */
+  scrollbar-width: none; /* Firefox */
+}
+
+.timeline-bar__scroll::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.timeline-bar__scroll--dragging {
+  cursor: grabbing;
+}
+
+.timeline-bar__track {
+  position: relative;
+  height: 100%;
+  min-width: 100%;
+}
+
+/* Time markers */
+.timeline-bar__marker {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+}
+
+.timeline-bar__marker-tick {
+  width: 1px;
+  height: 12px;
+  background: var(--color-border-default);
+}
+
+.timeline-bar__marker-label {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+}
+
+/* Now indicator */
+.timeline-bar__now {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--color-danger-fg);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.timeline-bar__now::before {
+  content: "NOW";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-danger-fg);
+  letter-spacing: 0.5px;
+}
+
+/* Recording blocks */
+.timeline-bar__block {
+  position: absolute;
+  top: 36px;
+  width: 8px;
+  min-width: 8px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  z-index: 2;
+  transform: translateX(-50%);
+  transition: opacity var(--duration-fast) var(--ease-default),
+              box-shadow var(--duration-fast) var(--ease-default),
+              transform var(--duration-fast) var(--ease-default);
+  padding: 0;
+}
+
+.timeline-bar__block--motion {
+  background: var(--color-accent-muted);
+  border: 1px solid var(--color-fg-accent);
+}
+
+.timeline-bar__block--doorbell {
+  background: var(--color-attention-muted);
+  border: 1px solid var(--color-attention-fg);
+}
+
+.timeline-bar__block:hover {
+  opacity: 0.85;
+  transform: translateX(-50%) scaleY(1.1);
+  z-index: 5;
+}
+
+.timeline-bar__block--motion:hover {
+  box-shadow: 0 0 8px rgba(88, 166, 255, 0.4);
+}
+
+.timeline-bar__block--doorbell:hover {
+  box-shadow: 0 0 8px rgba(210, 153, 34, 0.4);
+}
+
+.timeline-bar__block:focus-visible {
+  outline: 2px solid var(--color-fg-accent);
+  outline-offset: 2px;
+}
+
+.timeline-bar__block--selected {
+  box-shadow: 0 0 0 2px var(--color-fg-accent);
+  z-index: 4;
+}
+
+.timeline-bar__block--doorbell.timeline-bar__block--selected {
+  box-shadow: 0 0 0 2px var(--color-attention-fg);
+}
+
+.timeline-bar__block--stacked {
+  height: 22px;
+}
+
+/* Scrubber line */
+.timeline-bar__scrubber {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--color-fg-accent);
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: left var(--duration-fast) var(--ease-default);
+}
+
+/* Responsive: compact bar on narrow screens */
+@media (max-width: 768px) {
+  .timeline-bar {
+    height: 72px;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .timeline-bar__marker-label {
+    font-size: 10px;
+  }
+
+  .timeline-bar__block {
+    top: 30px;
+    height: 22px;
+    min-width: 6px;
+    width: 6px;
+  }
+
+  .timeline-bar__block--stacked {
+    height: 18px;
+  }
+
+  .timeline-bar__now::before {
+    font-size: 8px;
+  }
+}
