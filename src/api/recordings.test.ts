@@ -464,6 +464,60 @@ describe("recordings API", () => {
     expect(res.body).toEqual([]);
   });
 
+  // --- Counts endpoint ---
+
+  it("GET /counts returns counts for a camera and time range", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Front_Door&from=2024-01-15T00:00:00&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ motion: 1, doorbell: 1, total: 2 });
+  });
+
+  it("GET /counts returns 400 when camera is missing", async () => {
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?from=2024-01-15T00:00:00&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("camera, from, and to query parameters are required");
+  });
+
+  it("GET /counts returns 400 when from is missing", async () => {
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Front_Door&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("camera, from, and to query parameters are required");
+  });
+
+  it("GET /counts returns 400 when to is missing", async () => {
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Front_Door&from=2024-01-15T00:00:00"
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("camera, from, and to query parameters are required");
+  });
+
+  it("GET /counts returns zeros when no recordings match", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Nonexistent&from=2024-01-15T00:00:00&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ motion: 0, doorbell: 0, total: 0 });
+  });
+
   it("POST /bulk-delete rejects more than 500 paths", async () => {
     const app = buildApp();
     const paths = Array.from({ length: 501 }, (_, i) =>
