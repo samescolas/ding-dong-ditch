@@ -464,6 +464,60 @@ describe("recordings API", () => {
     expect(res.body).toEqual([]);
   });
 
+  it("GET /timeline handles very large time range", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Front_Door&from=2000-01-01T00:00:00&to=2099-12-31T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+  });
+
+  it("GET /timeline handles single-second time range", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Front_Door&from=2024-01-15T10:00:00&to=2024-01-15T10:00:00"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].event_type).toBe("doorbell");
+  });
+
+  it("GET /timeline handles camera names with special characters", async () => {
+    insertRecording({
+      camera: "Front Door (Main)",
+      date: "2024-01-15",
+      timestamp: "2024-01-15T10:30:00",
+      file: "10-30-00.mp4",
+      path: "2024-01-15/Front Door (Main)/10-30-00.mp4",
+      size: 512,
+      event_type: "motion",
+    });
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Front%20Door%20(Main)&from=2024-01-15T00:00:00&to=2024-01-15T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+  });
+
+  it("GET /timeline filters motion-only recordings", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/timeline?camera=Back_Yard&from=2024-01-15T00:00:00&to=2024-01-15T23:59:59&eventType=motion"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].event_type).toBe("motion");
+  });
+
   // --- Counts endpoint ---
 
   it("GET /counts returns counts for a camera and time range", async () => {
@@ -512,6 +566,61 @@ describe("recordings API", () => {
     const app = buildApp();
     const res = await (await request(app)).get(
       "/api/recordings/counts?camera=Nonexistent&from=2024-01-15T00:00:00&to=2024-01-16T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ motion: 0, doorbell: 0, total: 0 });
+  });
+
+  it("GET /counts handles very large time range", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Front_Door&from=2000-01-01T00:00:00&to=2099-12-31T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(2);
+    expect(res.body.doorbell).toBe(1);
+    expect(res.body.motion).toBe(1);
+  });
+
+  it("GET /counts handles single-second time range", async () => {
+    seedRecordings();
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Front_Door&from=2024-01-15T10:00:00&to=2024-01-15T10:00:00"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(1);
+    expect(res.body.doorbell).toBe(1);
+  });
+
+  it("GET /counts handles camera names with special characters", async () => {
+    insertRecording({
+      camera: "Front Door (Main)",
+      date: "2024-01-15",
+      timestamp: "2024-01-15T10:30:00",
+      file: "10-30-00.mp4",
+      path: "2024-01-15/Front Door (Main)/10-30-00.mp4",
+      size: 512,
+      event_type: "doorbell",
+    });
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Front%20Door%20(Main)&from=2024-01-15T00:00:00&to=2024-01-15T23:59:59"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(1);
+    expect(res.body.doorbell).toBe(1);
+  });
+
+  it("GET /counts returns zeros on empty database", async () => {
+    const app = buildApp();
+    const res = await (await request(app)).get(
+      "/api/recordings/counts?camera=Front_Door&from=2024-01-15T00:00:00&to=2024-01-15T23:59:59"
     );
 
     expect(res.status).toBe(200);
