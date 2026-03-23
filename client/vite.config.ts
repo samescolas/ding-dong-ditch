@@ -4,6 +4,10 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    globals: false,
+    environment: "node",
+  },
   server: {
     port: 5173,
     proxy: {
@@ -15,9 +19,5 @@ export default defineConfig({
   build: {
     outDir: "../dist/client",
     emptyOutDir: true,
-  },
-  test: {
-    globals: false,
-    environment: "node",
   },
 });
