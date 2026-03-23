@@ -17,7 +17,7 @@
   height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  cursor: grab;
+  cursor: crosshair;
   /* Let JS handle horizontal touch; allow native vertical scroll */
   touch-action: pan-y;
   /* Hide scrollbar but keep scrolling functional */
@@ -30,6 +30,10 @@
 
 .timeline-bar__scroll--dragging {
   cursor: grabbing;
+}
+
+.timeline-bar__scroll--scrubbing {
+  cursor: col-resize;
 }
 
 .timeline-bar__track {
@@ -156,6 +160,38 @@
   pointer-events: none;
   opacity: 0.7;
   transition: left var(--duration-fast) var(--ease-default);
+}
+
+/* Hover / scrub indicator */
+.timeline-bar__hover-indicator {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--color-fg-muted);
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.timeline-bar__hover-indicator--scrubbing {
+  width: 2px;
+  opacity: 0.8;
+  background: var(--color-fg-accent);
+}
+
+.timeline-bar__hover-tooltip {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  background: var(--color-bg-overlay, rgba(0, 0, 0, 0.8));
+  color: var(--color-fg-on-emphasis, #fff);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm, 4px);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Responsive: compact bar on narrow screens */
