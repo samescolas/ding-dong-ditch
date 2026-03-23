@@ -194,6 +194,22 @@
   pointer-events: none;
 }
 
+/* Touch-scrub indicator */
+.timeline-bar__scrub-indicator {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--color-fg-accent);
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 /* Responsive: compact bar on narrow screens */
 @media (max-width: 768px) {
   .timeline-bar {

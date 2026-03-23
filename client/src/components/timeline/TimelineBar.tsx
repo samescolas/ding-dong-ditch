@@ -166,9 +166,11 @@ export default function TimelineBar({
     startX: number;
     startScroll: number;
     isSwiping: boolean;
-  }>({ active: false, startX: 0, startScroll: 0, isSwiping: false });
-
+    isScrubbing: boolean;
+    scrubTimer: ReturnType<typeof setTimeout> | null;
+  }>({ active: false, startX: 0, startScroll: 0, isSwiping: false, isScrubbing: false, scrubTimer: null });
   const [isDragging, setIsDragging] = useState(false);
+  const [scrubPositionPx, setScrubPositionPx] = useState<number | null>(null);
 
   // Scrub state
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -305,20 +307,75 @@ export default function TimelineBar({
     };
   }, [getTrackPixelX, performScrubSelect, trackWidth, timeRange]);
 
-  // Touch drag-to-pan handlers (mirrors mouse drag with tap/scroll threshold)
+  // Find the nearest recording to a given pixel position on the track
+  const findNearestRecording = useCallback(
+    (trackXPx: number): TimelineRecording | null => {
+      if (recordings.length === 0) return null;
+      const MAX_SNAP_PX = 30;
+      let best: TimelineRecording | null = null;
+      let bestDist = Infinity;
+
+      for (const rec of recordings) {
+        const recMs = new Date(rec.timestamp).getTime();
+        const recPx = ((recMs - fromMs) / rangeMs) * trackWidth;
+        const dist = Math.abs(recPx - trackXPx);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = rec;
+        }
+      }
+
+      return bestDist <= MAX_SNAP_PX ? best : null;
+    },
+    [recordings, fromMs, rangeMs, trackWidth],
+  );
+
+  // Convert a touch clientX to a pixel position on the track
+  const touchToTrackPx = useCallback(
+    (clientX: number): number => {
+      const el = scrollRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      return clientX - rect.left + el.scrollLeft;
+    },
+    [],
+  );
+
+  // Touch handlers: long-press → scrub, quick swipe → pan
   const TOUCH_DRAG_THRESHOLD = 5;
+  const SCRUB_HOLD_MS = 300;
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const el = scrollRef.current;
     if (!el) return;
     const touch = e.touches[0];
+
+    // Clear any previous scrub timer
+    if (touchState.current.scrubTimer) {
+      clearTimeout(touchState.current.scrubTimer);
+    }
+
     touchState.current = {
       active: true,
       startX: touch.clientX,
       startScroll: el.scrollLeft,
       isSwiping: false,
+      isScrubbing: false,
+      scrubTimer: setTimeout(() => {
+        // Timer fired — finger held still long enough → enter scrub mode
+        if (touchState.current.active && !touchState.current.isSwiping) {
+          touchState.current.isScrubbing = true;
+          // Show scrub indicator at current position
+          const trackXPx = touchToTrackPx(touchState.current.startX);
+          setScrubPositionPx(trackXPx);
+          const nearest = findNearestRecording(trackXPx);
+          if (nearest) {
+            onSelect?.(nearest);
+          }
+        }
+      }, SCRUB_HOLD_MS),
     };
-  }, []);
+  }, [touchToTrackPx, findNearestRecording, onSelect]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -329,8 +386,25 @@ export default function TimelineBar({
       const touch = e.touches[0];
       const dx = touch.clientX - touchState.current.startX;
 
-      // Once past threshold, mark as swiping and prevent default to avoid page scroll
+      if (touchState.current.isScrubbing) {
+        // Scrub mode: update selection based on touch position
+        e.preventDefault();
+        const trackXPx = touchToTrackPx(touch.clientX);
+        setScrubPositionPx(trackXPx);
+        const nearest = findNearestRecording(trackXPx);
+        if (nearest) {
+          onSelect?.(nearest);
+        }
+        return;
+      }
+
+      // Not yet in any mode — check if movement exceeds threshold
       if (!touchState.current.isSwiping && Math.abs(dx) > TOUCH_DRAG_THRESHOLD) {
+        // Movement started before scrub timer → pan mode
+        if (touchState.current.scrubTimer) {
+          clearTimeout(touchState.current.scrubTimer);
+          touchState.current.scrubTimer = null;
+        }
         touchState.current.isSwiping = true;
         setIsDragging(true);
       }
@@ -343,12 +417,27 @@ export default function TimelineBar({
 
     const onTouchEnd = () => {
       if (!touchState.current.active) return;
+
+      // Clean up scrub timer
+      if (touchState.current.scrubTimer) {
+        clearTimeout(touchState.current.scrubTimer);
+        touchState.current.scrubTimer = null;
+      }
+
+      const wasScrubbing = touchState.current.isScrubbing;
+
       touchState.current.active = false;
+      touchState.current.isScrubbing = false;
+
       if (touchState.current.isSwiping) {
         touchState.current.isSwiping = false;
         setIsDragging(false);
       }
-      // If isSwiping was never set, the touch was a tap — click events fire naturally
+
+      if (wasScrubbing) {
+        setScrubPositionPx(null);
+      }
+      // If neither swiping nor scrubbing, the touch was a tap — click events fire naturally
     };
 
     el.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -359,7 +448,7 @@ export default function TimelineBar({
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, []);
+  }, [touchToTrackPx, findNearestRecording, onSelect]);
 
   // Auto-scroll to center the specified recording in the viewport
   useEffect(() => {
@@ -517,6 +606,14 @@ export default function TimelineBar({
             />
           );
         })}
+
+        {/* Touch-scrub hover indicator */}
+        {scrubPositionPx != null && (
+          <div
+            className="timeline-bar__scrub-indicator"
+            style={{ left: `${scrubPositionPx}px` }}
+          />
+        )}
 
         {/* Scrubber line for selected recording */}
         {selectedRecordingId != null && recordings.length > 0 && (() => {
