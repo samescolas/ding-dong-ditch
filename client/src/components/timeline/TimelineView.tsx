@@ -101,6 +101,7 @@ export default function TimelineView() {
         recordings={recordings}
         selectedRecordingId={selectedRecording?.id ?? null}
         onSelect={setSelectedRecording}
+        centeredRecordingId={selectedRecording?.id ?? null}
       />
     </div>
   );

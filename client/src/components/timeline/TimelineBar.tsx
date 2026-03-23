@@ -19,6 +19,8 @@ interface TimelineBarProps {
   recordings?: TimelineRecording[];
   selectedRecordingId?: number | null;
   onSelect?: (recording: TimelineRecording | null) => void;
+  /** When set, the timeline scrolls to center this recording in view */
+  centeredRecordingId?: number | null;
 }
 
 interface TimeMarker {
@@ -149,6 +151,7 @@ export default function TimelineBar({
   recordings = [],
   selectedRecordingId,
   onSelect,
+  centeredRecordingId,
 }: TimelineBarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -285,6 +288,23 @@ export default function TimelineBar({
       el.removeEventListener("touchcancel", onTouchEnd);
     };
   }, []);
+
+  // Auto-scroll to center the specified recording in the viewport
+  useEffect(() => {
+    if (centeredRecordingId == null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const rec = recordings.find((r) => r.id === centeredRecordingId);
+    if (!rec) return;
+
+    const recMs = new Date(rec.timestamp).getTime();
+    const positionPx = ((recMs - fromMs) / rangeMs) * trackWidth;
+    const viewportWidth = el.clientWidth;
+    const targetScroll = positionPx - viewportWidth / 2;
+
+    el.scrollTo({ left: targetScroll, behavior: "smooth" });
+  }, [centeredRecordingId, recordings, fromMs, rangeMs, trackWidth]);
 
   const handleBarClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
