@@ -153,13 +153,6 @@ export function useTimeline() {
     setTimeRange(range);
   }, []);
 
-  const latestRecording = useMemo(() => {
-    if (recordings.length === 0) return null;
-    return recordings.reduce((latest, rec) =>
-      rec.timestamp > latest.timestamp ? rec : latest
-    , recordings[0]);
-  }, [recordings]);
-
   return {
     recordings,
     latestRecording,

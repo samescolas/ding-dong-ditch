@@ -20,7 +20,6 @@ interface TimelineBarProps {
   recordings?: TimelineRecording[];
   selectedRecordingId?: number | null;
   onSelect?: (recording: TimelineRecording | null, seekRatio?: number) => void;
-  /** When set, the timeline scrolls to center this recording in view */
   centeredRecordingId?: number | null;
 }
 
@@ -147,6 +146,9 @@ function getNowPosition(timeRange: TimeRange): number | null {
 /** Pixels per hour of timeline — controls zoom / density */
 const PIXELS_PER_HOUR = 120;
 
+/** Minimum interval (ms) between debounced onSelect calls during scrub */
+const SCRUB_DEBOUNCE_MS = 100;
+
 export default function TimelineBar({
   timeRange,
   recordings = [],
@@ -156,19 +158,28 @@ export default function TimelineBar({
 }: TimelineBarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef<{ active: boolean; startX: number; startScroll: number }>({
-    active: false,
-    startX: 0,
-    startScroll: 0,
-  });
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  // Touch pan state (touch still uses drag-to-pan)
   const touchState = useRef<{
     active: boolean;
     startX: number;
     startScroll: number;
     isSwiping: boolean;
   }>({ active: false, startX: 0, startScroll: 0, isSwiping: false });
+
   const [isDragging, setIsDragging] = useState(false);
+
+  // Scrub state
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const [hoverX, setHoverX] = useState<number | null>(null);
+  const [hoverTimestamp, setHoverTimestamp] = useState<Date | null>(null);
+  const scrubState = useRef<{
+    active: boolean;
+    lastSelectTime: number;
+    lastSelectedId: number | null;
+    didScrub: boolean;
+  }>({ active: false, lastSelectTime: 0, lastSelectedId: null, didScrub: false });
 
   const rangeMs = timeRange.to.getTime() - timeRange.from.getTime();
   const fromMs = timeRange.from.getTime();
@@ -182,7 +193,7 @@ export default function TimelineBar({
     return computeBlockLayouts(recordings, rangeMs, fromMs, trackWidth);
   }, [recordings, rangeMs, fromMs, trackWidth]);
 
-  // Convert vertical mouse wheel to horizontal scroll
+  // Convert vertical mouse wheel to horizontal scroll (pan via scroll wheel)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -199,32 +210,91 @@ export default function TimelineBar({
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  // Drag-to-pan handlers
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    // Don't initiate drag on recording block clicks
-    if ((e.target as HTMLElement).closest(".timeline-bar__block")) return;
-
-    const el = scrollRef.current;
-    if (!el) return;
-
-    dragState.current = { active: true, startX: e.clientX, startScroll: el.scrollLeft };
-    setIsDragging(true);
+  /**
+   * Get the pixel X position relative to the track element from a mouse event.
+   */
+  const getTrackPixelX = useCallback((clientX: number): number | null => {
+    const track = trackRef.current;
+    if (!track) return null;
+    const rect = track.getBoundingClientRect();
+    return clientX - rect.left;
   }, []);
 
+  /**
+   * Perform a scrub selection at the given pixel X on the track.
+   * Debounces calls: fires immediately on recording change, otherwise
+   * throttles to SCRUB_DEBOUNCE_MS.
+   */
+  const performScrubSelect = useCallback(
+    (pixelX: number, force: boolean = false) => {
+      if (!onSelect) return;
+
+      const ts = pixelToTime(pixelX, trackWidth, timeRange);
+      const hit = hitTestRecording(ts, recordings);
+
+      if (!hit) return;
+
+      const now = Date.now();
+      const state = scrubState.current;
+      const recordingChanged = hit.recording.id !== state.lastSelectedId;
+      const timeSinceLastSelect = now - state.lastSelectTime;
+
+      if (force || recordingChanged || timeSinceLastSelect >= SCRUB_DEBOUNCE_MS) {
+        onSelect(hit.recording);
+        state.lastSelectTime = now;
+        state.lastSelectedId = hit.recording.id;
+      }
+    },
+    [onSelect, trackWidth, timeRange, recordings],
+  );
+
+  // Scrub mousedown: enter scrub mode, immediately select
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      // Don't initiate scrub on recording block clicks
+      if ((e.target as HTMLElement).closest(".timeline-bar__block")) return;
+
+      const pixelX = getTrackPixelX(e.clientX);
+      if (pixelX === null) return;
+
+      scrubState.current = {
+        active: true,
+        lastSelectTime: 0,
+        lastSelectedId: null,
+        didScrub: false,
+      };
+      setIsScrubbing(true);
+
+      // Immediately select at the click position
+      performScrubSelect(pixelX, true);
+    },
+    [getTrackPixelX, performScrubSelect],
+  );
+
+  // Global mousemove/mouseup for scrub
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
-      if (!dragState.current.active) return;
-      const el = scrollRef.current;
-      if (!el) return;
+      // Update hover indicator regardless of scrub state
+      const pixelX = getTrackPixelX(e.clientX);
+      if (pixelX !== null) {
+        setHoverX(pixelX);
+        setHoverTimestamp(pixelToTime(pixelX, trackWidth, timeRange));
+      }
 
-      const dx = e.clientX - dragState.current.startX;
-      el.scrollLeft = dragState.current.startScroll - dx;
+      if (!scrubState.current.active) return;
+
+      scrubState.current.didScrub = true;
+
+      if (pixelX !== null) {
+        performScrubSelect(pixelX);
+      }
     };
 
     const onMouseUp = () => {
-      if (!dragState.current.active) return;
-      dragState.current.active = false;
-      setIsDragging(false);
+      if (!scrubState.current.active) return;
+
+      scrubState.current.active = false;
+      setIsScrubbing(false);
     };
 
     window.addEventListener("mousemove", onMouseMove);
@@ -233,7 +303,7 @@ export default function TimelineBar({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, []);
+  }, [getTrackPixelX, performScrubSelect, trackWidth, timeRange]);
 
   // Touch drag-to-pan handlers (mirrors mouse drag with tap/scroll threshold)
   const TOUCH_DRAG_THRESHOLD = 5;
@@ -308,79 +378,57 @@ export default function TimelineBar({
     el.scrollTo({ left: targetScroll, behavior: "smooth" });
   }, [centeredRecordingId, recordings, fromMs, rangeMs, trackWidth]);
 
-  const handleTrackMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const track = e.currentTarget;
-    const rect = track.getBoundingClientRect();
-    setHoverX(e.clientX - rect.left);
-  }, []);
+  // Handle hover enter/leave for the track area
+  const handleMouseEnter = useCallback(
+    (e: React.MouseEvent) => {
+      const pixelX = getTrackPixelX(e.clientX);
+      if (pixelX !== null) {
+        setHoverX(pixelX);
+        setHoverTimestamp(pixelToTime(pixelX, trackWidth, timeRange));
+      }
+    },
+    [getTrackPixelX, trackWidth, timeRange],
+  );
 
-  const handleTrackMouseLeave = useCallback(() => {
-    setHoverX(null);
+  const handleMouseLeave = useCallback(() => {
+    if (!scrubState.current.active) {
+      setHoverX(null);
+      setHoverTimestamp(null);
+    }
   }, []);
 
   const handleBarClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      // If we just finished a scrub drag, suppress the click
+      if (scrubState.current.didScrub) {
+        scrubState.current.didScrub = false;
+        return;
+      }
       if (!onSelect) return;
       const target = e.target as HTMLElement;
       if (target.closest(".timeline-bar__block")) return;
-
-      // Click landed in a gap — find the nearest recording by time distance
-      const track = scrollRef.current?.querySelector(".timeline-bar__track") as HTMLElement | null;
-      if (track && recordings.length > 0) {
-        const trackRect = track.getBoundingClientRect();
-        const clickX = e.clientX - trackRect.left;
-        const clickTime = pixelToTime(clickX, trackWidth, timeRange);
-        const result = hitTestRecording(clickTime, recordings);
-        if (result) {
-          onSelect(result.recording);
-          return;
-        }
-      }
-
-      onSelect(null);
+      // Click on empty area with no scrub: handled by mousedown scrub already
     },
-    [onSelect, recordings, trackWidth, timeRange],
+    [onSelect],
   );
 
-  const handleTrackMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const trackEl = e.currentTarget;
-      const rect = trackEl.getBoundingClientRect();
-      const x = e.clientX - rect.left + trackEl.parentElement!.scrollLeft;
-      setHoverX(x);
-    },
-    [],
-  );
-
-  const handleTrackMouseLeave = useCallback(() => {
-    setHoverX(null);
-  }, []);
-
-  // Compute tooltip content and clamped position
-  const tooltip = useMemo(() => {
-    if (hoverX === null) return null;
-    const time = pixelToTime(hoverX, trackWidth, timeRange);
-    const label = formatTooltipTime(time, rangeMs);
-    // Clamp horizontally: keep tooltip within track bounds
-    // Approximate tooltip half-width ~40px
-    const halfTooltip = 40;
-    const clampedX = Math.max(halfTooltip, Math.min(hoverX, trackWidth - halfTooltip));
-    return { label, x: clampedX };
-  }, [hoverX, trackWidth, timeRange, rangeMs]);
+  // Compute hover indicator position as a percentage of track width
+  const hoverPosition = hoverX !== null ? (hoverX / trackWidth) * 100 : null;
 
   return (
     <div className="timeline-bar" ref={containerRef} onClick={handleBarClick} role="region" aria-label="Recording timeline">
       <div
-        className={`timeline-bar__scroll${isDragging ? " timeline-bar__scroll--dragging" : ""}`}
+        className={`timeline-bar__scroll${isDragging ? " timeline-bar__scroll--dragging" : ""}${isScrubbing ? " timeline-bar__scroll--scrubbing" : ""}`}
         ref={scrollRef}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
       >
       <div
         className="timeline-bar__track"
+        ref={trackRef}
         style={{ width: `${trackWidth}px` }}
-        onMouseMove={handleTrackMouseMove}
-        onMouseLeave={handleTrackMouseLeave}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         {/* Time markers */}
         {markers.map((marker, i) => (
@@ -403,6 +451,20 @@ export default function TimelineBar({
           />
         )}
 
+        {/* Hover / scrub indicator line */}
+        {hoverPosition !== null && (
+          <div
+            className={`timeline-bar__hover-indicator${isScrubbing ? " timeline-bar__hover-indicator--scrubbing" : ""}`}
+            style={{ left: `${hoverPosition}%` }}
+          >
+            {hoverTimestamp !== null && (
+              <span className="timeline-bar__hover-tooltip">
+                {formatTooltipTime(hoverTimestamp, rangeMs)}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Recording blocks */}
         {blockLayouts.map(({ recording: rec, position, stackLevel }) => {
           const eventType = rec.event_type || "motion";
@@ -417,11 +479,7 @@ export default function TimelineBar({
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                const block = e.currentTarget as HTMLElement;
-                const rect = block.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const seekRatio = Math.max(0, Math.min(1, clickX / rect.width));
-                onSelect?.(rec, seekRatio);
+                onSelect?.(rec);
               }}
               aria-label={`${eventType} event at ${new Date(rec.timestamp).toLocaleTimeString()}`}
               title={`${eventType} — ${new Date(rec.timestamp).toLocaleTimeString()}`}
@@ -436,29 +494,6 @@ export default function TimelineBar({
           const pos = ((new Date(selected.timestamp).getTime() - timeRange.from.getTime()) / rangeMs) * 100;
           return (
             <div className="timeline-bar__scrubber" style={{ left: `${pos}%` }} />
-          );
-        })()}
-
-        {/* Hover scrub indicator */}
-        {hoverX !== null && (
-          <div
-            className="timeline-bar__hover-line"
-            style={{ left: `${hoverX}px` }}
-          />
-        )}
-
-        {/* Hover time tooltip */}
-        {hoverX !== null && (() => {
-          const hoverTime = pixelToTime(hoverX, trackWidth, timeRange);
-          const label = formatTooltipTime(hoverTime, rangeMs);
-          const clampedX = Math.max(30, Math.min(hoverX, trackWidth - 30));
-          return (
-            <div
-              className="timeline-bar__tooltip"
-              style={{ left: `${clampedX}px` }}
-            >
-              {label}
-            </div>
           );
         })()}
       </div>
