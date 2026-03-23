@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { TimelineRecording, TimeRange } from "../components/timeline/TimelineBar";
 import type { TimePreset } from "../components/timeline/TimelineTopBar";
+import { findLatestRecording } from "../utils/timeline";
 
 export interface RecordingCounts {
   motion: number;
@@ -133,6 +134,11 @@ export function useTimeline() {
     }
   }, []);
 
+  const latestRecording = useMemo(
+    () => findLatestRecording(recordings),
+    [recordings],
+  );
+
   const setCustomTimeRange = useCallback((range: TimeRange) => {
     setTimePresetState("custom");
     setTimeRange(range);
@@ -140,6 +146,7 @@ export function useTimeline() {
 
   return {
     recordings,
+    latestRecording,
     loading,
     error,
     selectedRecording,
