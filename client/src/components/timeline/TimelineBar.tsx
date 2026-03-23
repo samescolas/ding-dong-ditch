@@ -415,8 +415,39 @@ export default function TimelineBar({
   // Compute hover indicator position as a percentage of track width
   const hoverPosition = hoverX !== null ? (hoverX / trackWidth) * 100 : null;
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!onSelect || recordings.length === 0) return;
+
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (selectedRecordingId == null) {
+          onSelect(recordings[recordings.length - 1]);
+          return;
+        }
+        const idx = recordings.findIndex((r) => r.id === selectedRecordingId);
+        if (idx > 0) {
+          onSelect(recordings[idx - 1]);
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (selectedRecordingId == null) {
+          onSelect(recordings[0]);
+          return;
+        }
+        const idx = recordings.findIndex((r) => r.id === selectedRecordingId);
+        if (idx >= 0 && idx < recordings.length - 1) {
+          onSelect(recordings[idx + 1]);
+        }
+      }
+    },
+    [onSelect, recordings, selectedRecordingId],
+  );
+
   return (
-    <div className="timeline-bar" ref={containerRef} onClick={handleBarClick} role="region" aria-label="Recording timeline">
+    <div className="timeline-bar" ref={containerRef} onClick={handleBarClick} onKeyDown={handleKeyDown} tabIndex={0} role="region" aria-label="Recording timeline">
       <div
         className={`timeline-bar__scroll${isDragging ? " timeline-bar__scroll--dragging" : ""}${isScrubbing ? " timeline-bar__scroll--scrubbing" : ""}`}
         ref={scrollRef}
