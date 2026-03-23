@@ -1,4 +1,5 @@
 import { useRef, useMemo, useCallback, useEffect, useState } from "react";
+import { pixelToTime, hitTestRecording } from "../../utils/timelineUtils";
 import "./TimelineBar.css";
 
 export interface TimelineRecording {
@@ -291,9 +292,23 @@ export default function TimelineBar({
       if (!onSelect) return;
       const target = e.target as HTMLElement;
       if (target.closest(".timeline-bar__block")) return;
+
+      // Click landed in a gap — find the nearest recording by time distance
+      const track = scrollRef.current?.querySelector(".timeline-bar__track") as HTMLElement | null;
+      if (track && recordings.length > 0) {
+        const trackRect = track.getBoundingClientRect();
+        const clickX = e.clientX - trackRect.left;
+        const clickTime = pixelToTime(clickX, trackWidth, timeRange);
+        const result = hitTestRecording(clickTime, recordings);
+        if (result) {
+          onSelect(result.recording);
+          return;
+        }
+      }
+
       onSelect(null);
     },
-    [onSelect],
+    [onSelect, recordings, trackWidth, timeRange],
   );
 
   return (
