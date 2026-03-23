@@ -158,6 +158,18 @@
   transition: left var(--duration-fast) var(--ease-default);
 }
 
+/* Hover scrub indicator */
+.timeline-bar__hover-line {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.4);
+  border-left: 1px dashed rgba(255, 255, 255, 0.5);
+  z-index: 3;
+  pointer-events: none;
+}
+
 /* Responsive: compact bar on narrow screens */
 @media (max-width: 768px) {
   .timeline-bar {

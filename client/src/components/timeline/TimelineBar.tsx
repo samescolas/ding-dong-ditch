@@ -164,6 +164,7 @@ export default function TimelineBar({
     isSwiping: boolean;
   }>({ active: false, startX: 0, startScroll: 0, isSwiping: false });
   const [isDragging, setIsDragging] = useState(false);
+  const [hoverX, setHoverX] = useState<number | null>(null);
 
   const rangeMs = timeRange.to.getTime() - timeRange.from.getTime();
   const fromMs = timeRange.from.getTime();
@@ -286,6 +287,16 @@ export default function TimelineBar({
     };
   }, []);
 
+  const handleTrackMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const track = e.currentTarget;
+    const rect = track.getBoundingClientRect();
+    setHoverX(e.clientX - rect.left);
+  }, []);
+
+  const handleTrackMouseLeave = useCallback(() => {
+    setHoverX(null);
+  }, []);
+
   const handleBarClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!onSelect) return;
@@ -304,7 +315,12 @@ export default function TimelineBar({
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
       >
-      <div className="timeline-bar__track" style={{ width: `${trackWidth}px` }}>
+      <div
+        className="timeline-bar__track"
+        style={{ width: `${trackWidth}px` }}
+        onMouseMove={handleTrackMouseMove}
+        onMouseLeave={handleTrackMouseLeave}
+      >
         {/* Time markers */}
         {markers.map((marker, i) => (
           <div
@@ -357,6 +373,14 @@ export default function TimelineBar({
             <div className="timeline-bar__scrubber" style={{ left: `${pos}%` }} />
           );
         })()}
+
+        {/* Hover scrub indicator */}
+        {hoverX !== null && (
+          <div
+            className="timeline-bar__hover-line"
+            style={{ left: `${hoverX}px` }}
+          />
+        )}
       </div>
       </div>
     </div>
