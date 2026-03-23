@@ -90,21 +90,42 @@
   background: var(--color-bg-subtle);
 }
 
-<<<<<<< HEAD
-=======
 .timeline-player__nav:focus-visible {
   outline: 2px solid var(--color-fg-accent);
   outline-offset: 2px;
   opacity: 1;
 }
 
->>>>>>> worktree-agent-a9988c41
 .timeline-player__nav--prev {
   left: var(--space-3);
 }
 
 .timeline-player__nav--next {
   right: var(--space-3);
+}
+
+.timeline-player__time-display {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--color-border-default);
+  background: var(--color-bg-subtle);
+}
+
+.timeline-player__elapsed {
+  color: var(--color-fg-default);
+}
+
+.timeline-player__time-separator {
+  color: var(--color-fg-muted);
+}
+
+.timeline-player__wall-clock {
+  color: var(--color-fg-muted);
 }
 
 .timeline-player__meta {
@@ -169,14 +190,11 @@
   border-color: var(--color-danger-fg);
 }
 
-<<<<<<< HEAD
-=======
 .timeline-player__delete:focus-visible {
   outline: 2px solid var(--color-fg-accent);
   outline-offset: 2px;
 }
 
->>>>>>> worktree-agent-a9988c41
 .timeline-player__meta-secondary {
   display: flex;
   align-items: center;
