@@ -26,6 +26,7 @@ export default function TimelineView() {
     timeRange,
     setCustomTimeRange,
     recordings,
+    latestRecording,
     counts,
     selectedRecording,
     setSelectedRecording,
@@ -37,6 +38,7 @@ export default function TimelineView() {
   useKeyboardShortcuts({ recordings, selectedRecording, setSelectedRecording });
 
   const hasRestoredRef = useRef(false);
+  const hasAutoJumpedRef = useRef(false);
 
   // On mount, restore selection from URL hash
   useEffect(() => {
@@ -49,8 +51,19 @@ export default function TimelineView() {
     const match = recordings.find((r) => r.id === id);
     if (match) {
       setSelectedRecording(match);
+      // URL hash restore counts as auto-jump so we don't override it
+      hasAutoJumpedRef.current = true;
     }
   }, [loading, recordings, setSelectedRecording]);
+
+  // Auto-select latest recording on first data load
+  useEffect(() => {
+    if (hasAutoJumpedRef.current || loading || recordings.length === 0) return;
+    if (!latestRecording) return;
+
+    hasAutoJumpedRef.current = true;
+    setSelectedRecording(latestRecording);
+  }, [loading, recordings, latestRecording, setSelectedRecording]);
 
   // Sync selectedRecording changes to URL hash
   useEffect(() => {

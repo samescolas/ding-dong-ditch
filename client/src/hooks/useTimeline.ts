@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { TimelineRecording, TimeRange } from "../components/timeline/TimelineBar";
 import type { TimePreset } from "../components/timeline/TimelineTopBar";
 
@@ -138,8 +138,16 @@ export function useTimeline() {
     setTimeRange(range);
   }, []);
 
+  const latestRecording = useMemo(() => {
+    if (recordings.length === 0) return null;
+    return recordings.reduce((latest, rec) =>
+      rec.timestamp > latest.timestamp ? rec : latest
+    , recordings[0]);
+  }, [recordings]);
+
   return {
     recordings,
+    latestRecording,
     loading,
     error,
     selectedRecording,
