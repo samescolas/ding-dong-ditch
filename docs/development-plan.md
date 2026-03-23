@@ -1,21 +1,21 @@
-# Development Plan: Timeline Review Interface
+# Development Plan: Timeline Playback Enhancements
 
-> **Generated from:** prd/timeline-review.md
-> **Created:** 2026-03-21
-> **Last synced:** 2026-03-21
+> **Generated from:** docs/prd.md
+> **Created:** 2026-03-22
+> **Last synced:** 2026-03-23
 > **Status:** Active Planning Document
 > **VibeKanban Project ID:** f40c2bb3-89c2-41f7-aa66-5a17854a36c5
 
 ## Overview
 
-Build a time-based recording review interface for ding-dong-ditch, replacing the default paginated grid with a horizontal timeline where recordings are plotted as colored blocks. Users select a camera, choose a time range, and scrub through a continuous timeline to review motion and doorbell events with inline video playback. The existing grid view is preserved as a "View All" screen.
+Enhance the existing ding-dong-ditch timeline view with three core improvements: auto-jump to the most recent event on load, continuous timeline scrubbing with a fixed time tooltip and preview thumbnail, and a wall-clock time overlay in the video player. All changes are frontend-only — no new API endpoints or schema changes needed.
 
 ## Tech Stack
 
-- **Backend:** Express + TypeScript (existing, extended with 2 new endpoints)
-- **Frontend:** React 19 + TypeScript + Vite (new components in existing SPA)
-- **Database:** SQLite with better-sqlite3 (existing schema, no migrations)
-- **Styling:** CSS (existing dark theme, extended)
+- **Backend:** Node.js + Express, SQLite (WAL) — no changes
+- **Frontend:** React + TypeScript, Vite — all changes here
+- **Database:** SQLite — no schema changes
+- **Infrastructure:** Self-hosted (Docker optional) — no changes
 
 ---
 
@@ -23,464 +23,373 @@ Build a time-based recording review interface for ding-dong-ditch, replacing the
 
 | Epic | Status | Progress |
 |------|--------|----------|
-| 1. API & Data Layer | Not Started | 0% |
-| 2. Timeline Component | Not Started | 0% |
-| 3. Inline Video Player | Not Started | 0% |
-| 4. Filters & Top Bar | Not Started | 0% |
-| 5. Hover Previews | Not Started | 0% |
-| 6. Navigation, Routing & Deep-Linking | Not Started | 0% |
-| 7. Keyboard & Accessibility | Not Started | 0% |
-| 8. Responsive & Polish | Not Started | 0% |
+| 1. Wall-Clock Time Display | Not Started | 0% |
+| 2. Auto-Jump to Latest Event | Not Started | 0% |
+| 3. Timeline Scrubbing & Time Indicator | Not Started | 0% |
+| 4. Scrub Preview Thumbnails | Not Started | 0% |
+| 5. Testing & Polish | Not Started | 0% |
 
 ---
 
-## Epic 1: API & Data Layer (NOT STARTED)
+## Epic 1: Wall-Clock Time Display (NOT STARTED)
 
-Add lightweight API endpoints optimized for timeline rendering and event counting, avoiding the overhead of full recording metadata for the timeline view.
+Add an approximate real-world clock time to the video player, calculated from the recording's start timestamp plus the current playback position. Smallest-scope epic — isolated to the TimelinePlayer component.
 
 ### Acceptance Criteria
 
-- [ ] Timeline endpoint returns lightweight recording metadata for a given camera and time range
-- [ ] Counts endpoint returns motion/doorbell/total counts for the current filter
-- [ ] Both endpoints respect existing auth middleware
-- [ ] Existing API endpoints remain unchanged
+- [ ] Video player shows wall-clock time alongside elapsed time (e.g., `0:15 / 0:30 · 2:34 PM`)
+- [ ] Time updates in real-time during playback and on seek
+- [ ] Gracefully hidden when recording timestamp is missing or invalid
 
 ### Tasks
 
 | ID | Title | Description | Priority | Complexity | Depends On | Status |
 |----|-------|-------------|----------|------------|------------|--------|
-| 1.1 | Timeline DB query | Add `queryTimelineRecordings()` to `src/db/recordings.ts` — returns id, timestamp, event_type, snapshot_key for a camera + time range, ordered by timestamp | High | S | — | <!-- vk:04bb9e5f-bc69-40e6-8eb8-97b90e00913c --> |
-| 1.2 | Counts DB query | Add `countRecordingsByType()` to `src/db/recordings.ts` — returns `{ motion, doorbell, total }` for a camera + time range | High | S | — | <!-- vk:7d7daca2-b530-4661-8de0-2135cc886689 --> |
-| 1.3 | Timeline API endpoint | Add `GET /api/recordings/timeline` with query params: camera, from, to, eventType. Returns array of lightweight recording objects | High | M | 1.1 | <!-- vk:977cebfa-8ea8-4674-9a22-1cae5188e703 --> |
-| 1.4 | Counts API endpoint | Add `GET /api/recordings/counts` with query params: camera, from, to. Returns counts object | High | S | 1.2 | <!-- vk:4cc1fd79-84f7-428d-b7d1-ad7bf8872987 --> |
-| 1.5 | API tests | Unit tests for both new DB queries and integration tests for both new endpoints | High | M | 1.3, 1.4 | <!-- vk:22a81899-2c86-4277-852c-9c796afae83b --> |
+| 1.1 | Wall-clock time calculation utility | Create a utility function that takes a recording ISO timestamp and a video currentTime (seconds) and returns a formatted wall-clock string (`h:mm:ss AM/PM`) | High | S | — | <!-- vk:73c2c7dd-0c84-4d3b-a14d-9b83c10be23a --> |
+| 1.2 | Custom video time display | Add a custom time overlay to TimelinePlayer that shows elapsed, duration, and wall-clock time. Hook into video `timeupdate` and `seeked` events | High | M | 1.1 | <!-- vk:b71f2e4c-b947-4e85-a970-b148f31cdd55 --> |
+| 1.3 | Timestamp validation & fallback | Validate recording timestamp before computing wall-clock time; hide the wall-clock portion if timestamp is missing, null, or not a valid ISO date | Medium | S | 1.2 | <!-- vk:beb5f907-b4e1-419e-af10-43e40078bd79 --> |
+| 1.4 | Unit tests for wall-clock logic | Test the calculation utility: valid timestamps, edge cases (midnight rollover, timezone handling), invalid/null timestamps | High | S | 1.1 | <!-- vk:2bd1a9c6-9254-4c9b-9de1-9e29d981c80d --> |
 
 ### Task Details
 
-**1.1 - Timeline DB query**
-- [ ] Function `queryTimelineRecordings(camera, from, to, eventType?)` exists in `src/db/recordings.ts`
-- [ ] Returns only `id`, `timestamp`, `event_type`, `snapshot_key`, `path` (no description, size, etc.)
-- [ ] Results ordered by `timestamp ASC`
-- [ ] Optional `eventType` filter works correctly
+**1.1 - Wall-clock time calculation utility**
+- [ ] Function `formatWallClockTime(isoTimestamp: string, currentTimeSeconds: number): string | null` exists
+- [ ] Returns formatted string like `2:34:15 PM` for valid inputs
+- [ ] Returns `null` for invalid/missing timestamp
+- [ ] Handles midnight rollover correctly (e.g., 11:59 PM + 120s = 12:01 AM)
 
-**1.2 - Counts DB query**
-- [ ] Function `countRecordingsByType(camera, from, to)` exists in `src/db/recordings.ts`
-- [ ] Returns `{ motion: number, doorbell: number, total: number }`
-- [ ] Counts are accurate against manual SQL verification
+**1.2 - Custom video time display**
+- [ ] Time overlay visible below or beside the video player controls
+- [ ] Format: `0:15 / 0:30 · 2:34 PM` (elapsed / duration · wall-clock)
+- [ ] Updates on every `timeupdate` event during playback
+- [ ] Updates immediately on `seeked` event when user scrubs within the video
+- [ ] Separator (·) only shown when wall-clock time is available
 
-**1.3 - Timeline API endpoint**
-- [ ] `GET /api/recordings/timeline?camera=X&from=ISO&to=ISO` returns 200 with array
-- [ ] Missing `camera` or `from`/`to` returns 400
-- [ ] Auth middleware protects the endpoint
-- [ ] Response payload is lightweight (no description or size fields)
+**1.3 - Timestamp validation & fallback**
+- [ ] Invalid ISO strings (empty, malformed, `"undefined"`) return null from utility
+- [ ] When wall-clock is null, display shows only `0:15 / 0:30` without separator
+- [ ] No console errors or visual glitches when timestamp is missing
 
-**1.4 - Counts API endpoint**
-- [ ] `GET /api/recordings/counts?camera=X&from=ISO&to=ISO` returns 200 with `{ motion, doorbell, total }`
-- [ ] Missing params returns 400
-- [ ] Auth middleware protects the endpoint
-
-**1.5 - API tests**
-- [ ] DB query tests cover: empty results, motion-only filter, doorbell-only filter, mixed results
-- [ ] Endpoint tests cover: valid requests, missing params, auth enforcement
+**1.4 - Unit tests for wall-clock logic**
+- [ ] Test valid timestamp + 0 seconds = recording start time
+- [ ] Test valid timestamp + N seconds = correct offset
+- [ ] Test midnight rollover
+- [ ] Test null/undefined/empty string returns null
+- [ ] Test malformed ISO string returns null
 - [ ] All tests pass with `npm test`
 
 ---
 
-## Epic 2: Timeline Component (NOT STARTED)
+## Epic 2: Auto-Jump to Latest Event (NOT STARTED)
 
-Build the core horizontal timeline bar that renders recording events as colored blocks on a continuous time axis, with scrolling, scrubbing, and click-to-select.
+On initial timeline view load, automatically position the timeline at the most recent recording and begin playback. No re-jump on filter/camera changes.
 
 ### Acceptance Criteria
 
-- [ ] Horizontal timeline bar renders at the bottom of the screen
-- [ ] Recording blocks are color-coded by event type (motion vs doorbell)
-- [ ] Timeline is scrollable/draggable horizontally
-- [ ] Clicking a block selects that recording
-- [ ] Clicking empty space shows an empty state (no jump to nearest)
-- [ ] A "now" indicator is visible on the timeline
-- [ ] Time markers are labeled adaptively based on the visible range
+- [ ] Timeline auto-scrolls to center the most recent recording on initial load
+- [ ] Most recent recording auto-plays on initial load
+- [ ] Changing camera or filter does NOT trigger re-jump
+- [ ] Empty state displayed when no recordings match current filters
+- [ ] Graceful fallback if query fails (timeline loads normally without auto-selection)
 
 ### Tasks
 
 | ID | Title | Description | Priority | Complexity | Depends On | Status |
 |----|-------|-------------|----------|------------|------------|--------|
-| 2.1 | TimelineBar component shell | Create `TimelineBar.tsx` with fixed-bottom layout, time axis rendering with adaptive markers, and "now" indicator | High | L | — | <!-- vk:d2cfad8d-32d2-4ab2-a987-c583ba23d683 --> |
-| 2.2 | Recording blocks rendering | Render recording events as colored blocks (motion=blue/gray, doorbell=orange) with minimum visible width, positioned by timestamp on the time axis | High | L | 2.1 | <!-- vk:ad324620-9785-489b-8cd6-a2aae575b95c --> |
-| 2.3 | Timeline scrolling & dragging | Implement horizontal scroll and mouse-drag to navigate the timeline, with momentum/inertia | High | M | 2.1 | <!-- vk:5738e1f2-1d72-483d-9fdc-1bda9321d2ae --> |
-| 2.4 | Click-to-select interaction | Clicking a recording block selects it and emits selection event; clicking empty space clears selection | High | M | 2.2 | <!-- vk:5489b95d-cc8f-43f7-a0f8-d2731a2d4e8e --> |
-| 2.5 | Scrubber line | Vertical indicator line showing the currently selected recording's position on the timeline | Medium | S | 2.4 | <!-- vk:c35428b7-a961-40ac-9ddb-0e46b091f0e5 --> |
-| 2.6 | useTimeline hook | Create `useTimeline.ts` hook that fetches timeline data from API, manages time range state, selected recording, and provides computed block positions | High | L | 1.3 | <!-- vk:55ad2bd0-5f4c-4bbe-b983-574750014c5e --> |
-| 2.7 | Adaptive zoom | Timeline zoom level adjusts automatically based on the selected time range (1h vs 24h vs 7d) with appropriate marker intervals | Medium | M | 2.1, 2.6 | <!-- vk:08c9d9b5-7696-4e22-9635-790b33f05169 --> |
+| 2.1 | Find most recent recording in useTimeline | After timeline data loads, identify the most recent recording by timestamp. Expose it as `latestRecording` from the hook | High | S | — | <!-- vk:0638ddb4-55c2-4b6a-8482-6985a17d25b7 --> |
+| 2.2 | Auto-select on initial load | On first data load (not re-fetches), auto-set `selectedRecording` to `latestRecording` and trigger playback. Use a ref to track whether initial jump has occurred | High | M | 2.1 | <!-- vk:76ad2d30-d01a-4d08-b8ac-271c256ad110 --> |
+| 2.3 | Auto-scroll timeline to selection | When a recording is auto-selected, scroll the TimelineBar so the selected recording's block is centered horizontally in the viewport | High | M | 2.2 | <!-- vk:4b080955-09a0-4470-bec4-14b1a87ea5f1 --> |
+| 2.4 | Empty state for no recordings | When timeline data returns empty array, show a centered message in the player area: "No recordings found" with suggestion to adjust filters or time range | Medium | S | — | <!-- vk:22c6c83b-27c8-48b9-a186-8abda3311821 --> |
+| 2.5 | Tests for auto-jump behavior | Test: initial load triggers auto-select; subsequent filter changes do not re-trigger; empty data shows empty state; failed fetch falls back gracefully | High | M | 2.2, 2.3 | <!-- vk:1fda2441-9e96-4283-a35e-3fe73fb804c4 --> |
 
 ### Task Details
 
-**2.1 - TimelineBar component shell**
-- [ ] Component renders a fixed-bottom bar with dark theme styling
-- [ ] Time axis shows labeled markers (e.g., "7:00 AM", "7:30 AM") at appropriate intervals
-- [ ] "Now" indicator (vertical line or marker) renders at the current time position
-- [ ] Bar has appropriate height (~80-100px) and spans full width
+**2.1 - Find most recent recording in useTimeline**
+- [ ] `useTimeline` exposes `latestRecording` computed from sorted timeline data
+- [ ] Returns `null` when recordings array is empty
+- [ ] Most recent = highest timestamp value
 
-**2.2 - Recording blocks rendering**
-- [ ] Blocks render at correct positions based on timestamp relative to the time range
-- [ ] Motion events use a distinct color from doorbell events
-- [ ] Blocks have a minimum width (e.g., 8px) so short clips are visible and clickable
-- [ ] Overlapping/adjacent blocks don't merge — each is individually identifiable
+**2.2 - Auto-select on initial load**
+- [ ] On first successful data fetch, `selectedRecording` is set to `latestRecording`
+- [ ] A `hasAutoJumped` ref prevents re-triggering on subsequent data loads
+- [ ] Changing camera or event type filter re-fetches data but does NOT reset `hasAutoJumped`
+- [ ] Video auto-plays for the selected recording
 
-**2.3 - Timeline scrolling & dragging**
-- [ ] Mouse wheel scrolls the timeline horizontally
-- [ ] Click-and-drag pans the timeline
-- [ ] Scrolling stays within the bounds of the selected time range
-- [ ] Interaction feels smooth (no jank or lag with 100+ blocks)
+**2.3 - Auto-scroll timeline to selection**
+- [ ] TimelineBar exposes a `scrollToRecording(recording)` method or accepts a `centeredRecording` prop
+- [ ] The selected recording's block is horizontally centered in the visible timeline area
+- [ ] Scroll animation is smooth (CSS scroll-behavior or requestAnimationFrame)
+- [ ] Works correctly across all zoom levels / time range presets
 
-**2.4 - Click-to-select interaction**
-- [ ] Clicking a recording block calls `onSelect(recording)` callback
-- [ ] Clicking empty space calls `onSelect(null)` — clear selection
-- [ ] Selected block has a visual highlight (border, glow, or brightness change)
+**2.4 - Empty state for no recordings**
+- [ ] Empty state renders when `recordings.length === 0` and `loading === false`
+- [ ] Message is centered in the player area
+- [ ] Suggests adjusting filters or time range
+- [ ] Consistent with existing dark theme styling
 
-**2.5 - Scrubber line**
-- [ ] Vertical line appears at the selected recording's timestamp position
-- [ ] Line is visually distinct from the "now" indicator
-- [ ] Line disappears when no recording is selected
-
-**2.6 - useTimeline hook**
-- [ ] Fetches from `/api/recordings/timeline` with current camera, from, to, eventType
-- [ ] Exposes: `recordings`, `loading`, `error`, `selectedRecording`, `setSelectedRecording`, `timeRange`, `setTimeRange`
-- [ ] Re-fetches when camera, time range, or event type filter changes
-- [ ] Computes block positions (x-offset, width) based on time range and container width
-
-**2.7 - Adaptive zoom**
-- [ ] 1-hour range → markers every 5 minutes
-- [ ] 24-hour range → markers every 1 hour
-- [ ] 7-day range → markers every 6 hours or every day
-- [ ] Marker density adjusts to avoid overlapping labels
+**2.5 - Tests for auto-jump behavior**
+- [ ] Test: first load with recordings → selectedRecording equals latest
+- [ ] Test: filter change after initial load → selectedRecording unchanged (no re-jump)
+- [ ] Test: first load with empty data → no selectedRecording, empty state shown
+- [ ] Test: API error → no selectedRecording, timeline loads without crash
+- [ ] All tests pass with `npm test`
 
 ---
 
-## Epic 3: Inline Video Player (NOT STARTED)
+## Epic 3: Timeline Scrubbing & Time Indicator (NOT STARTED)
 
-Replace the modal-based video playback with an inline player in the main content area, showing metadata and navigation controls.
+Add continuous hover and drag scrubbing to the TimelineBar. A fixed time tooltip above the bar shows the time at the cursor position. Clicking within a recording block seeks proportionally; clicking a gap selects the nearest recording.
 
 ### Acceptance Criteria
 
-- [ ] Video plays inline in the main content area (no modal)
-- [ ] Auto-plays when a recording is selected
-- [ ] Shows recording metadata (camera, timestamp, event type, AI description, size)
-- [ ] Previous/next navigation steps through recordings sequentially
-- [ ] Delete removes the recording and returns to empty state
-- [ ] Empty state shows instructional prompt when no recording is selected
+- [ ] Hovering the timeline shows a vertical scrub indicator tracking the cursor
+- [ ] A fixed time tooltip above the bar displays the time at the cursor position
+- [ ] Clicking within a recording block selects it and seeks to a proportional offset
+- [ ] Clicking in a gap selects the nearest recording and plays from the beginning
+- [ ] Click-and-drag scrubbing continuously updates selection and playback position
+- [ ] Touch swipe mirrors drag behavior
+- [ ] Keyboard arrow keys scrub when timeline is focused
+- [ ] Scrub indicator is visually distinct from the "now" indicator
 
 ### Tasks
 
 | ID | Title | Description | Priority | Complexity | Depends On | Status |
 |----|-------|-------------|----------|------------|------------|--------|
-| 3.1 | TimelinePlayer component | Create `TimelinePlayer.tsx` — large inline video player with HTML5 video element, auto-play on source change | High | M | 2.4 | <!-- vk:178703ae-b5b4-4547-b46e-37c86918865d --> |
-| 3.2 | Recording metadata panel | Display camera name, timestamp, event type badge, AI description, and file size alongside the video | High | S | 3.1 | <!-- vk:289f3292-c731-4669-b83b-2d41c0d0a52b --> |
-| 3.3 | Previous/Next navigation | Buttons to step through recordings sequentially based on the timeline data | High | M | 3.1, 2.6 | <!-- vk:76f2fdea-9085-49a6-acb6-d5775f41a9ff --> |
-| 3.4 | Delete with confirmation | Delete button with confirmation dialog; on delete, removes recording from timeline and returns to empty state | High | M | 3.1, 2.6 | <!-- vk:503fe16d-c9d5-4bcd-af91-0098c11442c3 --> |
-| 3.5 | Empty state / Instructions | Show a prompt ("Select a recording from the timeline below to start reviewing") when no recording is selected | Medium | S | 3.1 | <!-- vk:1c9ae676-cbed-4203-bdcb-37b32b6cb414 --> |
+| 3.1 | Hover scrub indicator line | Add a vertical line that follows the mouse cursor horizontally across the TimelineBar. Visible only on hover, disappears on mouse leave | High | S | — | <!-- vk:0f3bceed-23a4-4e7a-ab2c-66168690944b --> |
+| 3.2 | Pixel-to-time conversion utility | Create a utility that converts a pixel x-offset within the timeline bar to a timestamp, based on the current time range and container width | High | S | — | <!-- vk:e152328b-dc00-4aa0-a8ed-2dfaeefaaa9b --> |
+| 3.3 | Fixed time tooltip above bar | Display a fixed-position tooltip above the timeline bar showing the time at the cursor position. Format: `HH:MM AM/PM` (or `HH:MM:SS AM/PM` at high zoom) | High | M | 3.1, 3.2 | <!-- vk:8679cd17-15bf-4479-8239-201b617f5264 --> |
+| 3.4 | Click-to-seek within recording blocks | When clicking inside a recording block, calculate proportional offset (click position within block / block width * duration) and seek the video to that offset | High | M | 3.2 | <!-- vk:6b02f1d9-2da9-4c3f-9969-ffdfad512a6f --> |
+| 3.5 | Click-in-gap nearest recording | When clicking in a gap between recordings, find the nearest recording by timestamp (whichever direction is closest) and select it, playing from the beginning | High | M | 3.2 | <!-- vk:7cf94062-6816-4197-af7a-a13a3def7011 --> |
+| 3.6 | Hit-test utility for recordings | Create a function that, given a timestamp, returns either the recording containing that time (with offset) or the nearest recording. Use binary search for performance with large datasets | High | M | 3.2 | <!-- vk:322bc86a-1582-40ec-a6a7-d75b05f7af01 --> |
+| 3.7 | Click-and-drag continuous scrubbing | On mousedown + mousemove, continuously update the selected recording and seek position as the user drags across the timeline. Debounce video seeks to avoid excessive loading | High | L | 3.4, 3.5, 3.6 | <!-- vk:2d97216d-d3ce-43ef-aada-cd0c94789ca4 --> |
+| 3.8 | Touch swipe scrubbing | Mirror drag scrubbing for touch events (touchstart, touchmove, touchend). Distinguish between timeline-scrub and timeline-pan gestures | Medium | M | 3.7 | <!-- vk:84b3b981-c4b0-41b2-8f1d-4fc14de1cd55 --> |
+| 3.9 | Keyboard arrow scrubbing | When TimelineBar is focused, Left/Right arrow keys move the scrub position by one recording step. Integrate with existing keyboard shortcut handling | Medium | S | 3.6 | <!-- vk:c5b417fd-ac40-4ac9-a9fb-c93234a85045 --> |
+| 3.10 | Tests for scrubbing interactions | Test: pixel-to-time conversion accuracy, hit-test with various recording layouts, proportional seek calculation, gap-click nearest-recording logic | High | M | 3.2, 3.6 | <!-- vk:6a205264-9ed0-43fd-a8b1-3dd05a6a599e --> |
 
 ### Task Details
 
-**3.1 - TimelinePlayer component**
-- [ ] Video element fills the main content area proportionally
-- [ ] Video auto-plays when `selectedRecording` changes (new source loaded)
-- [ ] Standard browser controls visible (play/pause, volume, fullscreen)
-- [ ] Handles missing/errored video gracefully (error state with message)
+**3.1 - Hover scrub indicator line**
+- [ ] Vertical line renders at cursor x-position within the TimelineBar
+- [ ] Line appears on `mouseenter`, follows on `mousemove`, disappears on `mouseleave`
+- [ ] Visually distinct from the "now" indicator (different color/style, e.g., dashed or lighter)
+- [ ] Does not interfere with existing click-to-select or drag-to-pan behavior
 
-**3.2 - Recording metadata panel**
-- [ ] Camera name displayed prominently
-- [ ] Timestamp shown in human-readable format (e.g., "Mar 21, 2026 at 7:45 AM")
-- [ ] Event type badge (doorbell/motion) with distinct styling
-- [ ] AI description shown if available, hidden if null
-- [ ] File size displayed in human-readable format (KB/MB)
+**3.2 - Pixel-to-time conversion utility**
+- [ ] Function `pixelToTime(xOffset: number, containerWidth: number, timeRange: { from: Date, to: Date }): Date`
+- [ ] Linear interpolation: `from + (xOffset / containerWidth) * (to - from)`
+- [ ] Handles edge cases: xOffset < 0 clamps to `from`, xOffset > containerWidth clamps to `to`
 
-**3.3 - Previous/Next navigation**
-- [ ] "Previous" button selects the recording before the current one (by timestamp)
-- [ ] "Next" button selects the recording after the current one
-- [ ] Buttons disabled at the boundaries (first/last recording in range)
-- [ ] Timeline scrubber updates to reflect the new selection
+**3.3 - Fixed time tooltip above bar**
+- [ ] Tooltip rendered in a fixed position above the timeline bar (not following the cursor vertically)
+- [ ] Horizontally aligned with the cursor x-position
+- [ ] Shows `h:mm AM/PM` at 24h+ zoom, `h:mm:ss AM/PM` at <1h zoom
+- [ ] Tooltip stays within viewport bounds (doesn't overflow left/right edges)
+- [ ] Minimum 12px font, sufficient contrast against dark background
 
-**3.4 - Delete with confirmation**
-- [ ] Clicking delete shows a confirmation dialog (not just browser confirm — styled)
-- [ ] Confirming delete calls `DELETE /api/recordings/:date/:camera/:file`
-- [ ] Recording is removed from the timeline data
-- [ ] Player returns to empty/instructions state after deletion
-- [ ] Error handling for failed deletes (toast or inline error)
+**3.4 - Click-to-seek within recording blocks**
+- [ ] Clicking at the visual midpoint of a block seeks to ~50% of video duration
+- [ ] Clicking at the start edge seeks to ~0:00
+- [ ] Clicking at the end edge seeks to near the end
+- [ ] Video element receives a `currentTime` assignment after `loadedmetadata`
+- [ ] Selected recording updates in useTimeline state
 
-**3.5 - Empty state / Instructions**
-- [ ] Renders when no recording is selected (initial load, after delete, after clearing selection)
-- [ ] Shows an icon and instructional text
-- [ ] Consistent with existing dark theme
+**3.5 - Click-in-gap nearest recording**
+- [ ] Clicking in a gap selects the closest recording by time distance
+- [ ] Ties broken by whichever is chronologically closer
+- [ ] Selected recording plays from the beginning (currentTime = 0)
+- [ ] Works correctly when gap is at the start or end of the time range
+
+**3.6 - Hit-test utility for recordings**
+- [ ] Function `hitTestRecording(timestamp: Date, recordings: TimelineRecording[]): { recording, offset? } | null`
+- [ ] Uses binary search (O(log n)) for performance with 500+ recordings
+- [ ] Returns `{ recording, offsetRatio }` when timestamp falls within a recording's time span
+- [ ] Returns `{ recording, offsetRatio: 0 }` (nearest) when timestamp falls in a gap
+- [ ] Returns `null` only when recordings array is empty
+
+**3.7 - Click-and-drag continuous scrubbing**
+- [ ] On mousedown within timeline, entering drag mode
+- [ ] mousemove updates scrub indicator, time tooltip, and selected recording
+- [ ] Video seek updates are debounced (e.g., every 100ms or on recording change)
+- [ ] mouseup exits drag mode and finalizes selection
+- [ ] Drag does not trigger pan (existing drag-to-pan disabled during scrub)
+
+**3.8 - Touch swipe scrubbing**
+- [ ] touchstart initiates scrub mode (after brief hold to distinguish from pan)
+- [ ] touchmove updates scrub position
+- [ ] touchend finalizes selection
+- [ ] Existing touch-pan behavior preserved for quick swipes
+
+**3.9 - Keyboard arrow scrubbing**
+- [ ] Left arrow selects previous recording, Right arrow selects next
+- [ ] Only active when TimelineBar (or a parent container) has focus
+- [ ] Does not conflict with video player keyboard controls
+- [ ] Visual scrub indicator updates to reflect keyboard selection
+
+**3.10 - Tests for scrubbing interactions**
+- [ ] pixelToTime: test at 0%, 50%, 100% of container width
+- [ ] pixelToTime: test clamping at negative and overflow values
+- [ ] hitTest: test click within recording returns correct recording + offset
+- [ ] hitTest: test click in gap returns nearest recording
+- [ ] hitTest: test empty recordings returns null
+- [ ] hitTest: performance acceptable with 500 recordings (< 1ms)
+- [ ] All tests pass with `npm test`
 
 ---
 
-## Epic 4: Filters & Top Bar (NOT STARTED)
+## Epic 4: Scrub Preview Thumbnails (NOT STARTED)
 
-Build the top bar with camera selector, time range presets, and event type filter with live counts.
+Show a video frame thumbnail alongside the time tooltip when hovering over a recording block on the timeline. Uses a hidden video element to seek and capture frames via canvas.
 
 ### Acceptance Criteria
 
-- [ ] Camera selector shows all available cameras and switches the timeline
-- [ ] Time range presets (Last Hour, Last 24h, Last 7 Days, Custom) update the timeline
-- [ ] Event type filter (All, Doorbell, Motion) filters timeline blocks and shows counts
-- [ ] Last-selected camera is persisted in localStorage
+- [ ] Hovering over a recording block shows a thumbnail preview alongside the time tooltip
+- [ ] Thumbnail shows the approximate frame at the hovered position within the recording
+- [ ] Hovering over a gap shows only the time tooltip (no thumbnail)
+- [ ] Thumbnail generation does not impact main video playback performance
 
 ### Tasks
 
 | ID | Title | Description | Priority | Complexity | Depends On | Status |
 |----|-------|-------------|----------|------------|------------|--------|
-| 4.1 | TimelineTopBar component | Create `TimelineTopBar.tsx` shell with layout for camera selector, time range, event filters | High | S | — | <!-- vk:2e97e381-b5d6-4e70-8cf9-ae94c29d1099 --> |
-| 4.2 | Camera selector | Dropdown that fetches cameras from `/api/recordings/cameras`, persists selection in localStorage | High | M | 4.1, 2.6 | <!-- vk:40a4baf9-eeb3-44c7-856c-2733bf5c7410 --> |
-| 4.3 | Time range presets | Buttons/chips for Last Hour, Last 24h, Last 7 Days, Custom (with date-time picker) | High | M | 4.1, 2.6 | <!-- vk:8cc7edce-686b-4cfd-adb1-d5f30e4e9b16 --> |
-| 4.4 | Event type filter with counts | Filter tabs (All, Doorbell, Motion) that show counts from `/api/recordings/counts` and filter the timeline | High | M | 4.1, 1.4, 2.6 | <!-- vk:014b2fb9-3d37-447f-83fd-6ec884814ebf --> |
-| 4.5 | Active filter chips | Visual chips showing currently active filters, consistent with existing FilterBar styling | Low | S | 4.2, 4.3, 4.4 | <!-- vk:2848608a-8c80-4a0a-b511-c1f9d44d36dd --> |
+| 4.1 | Hidden video element for thumbnail generation | Create a hidden `<video>` element that loads recording files for frame capture. Manages loading state and seeks to requested times | High | M | 3.6 | <!-- vk:61d32946-c176-4bde-baf7-94b35d4323ae --> |
+| 4.2 | Canvas frame capture utility | Capture the current frame from the hidden video element to a canvas, then extract as a data URL or ImageBitmap for display | High | M | 4.1 | <!-- vk:8f3656e9-3d74-49c4-8445-fee7888cace6 --> |
+| 4.3 | Thumbnail cache | Cache generated thumbnails keyed by `recordingPath:offsetRatio` to avoid redundant video seeks. LRU cache with configurable size limit (e.g., 50 entries) | Medium | S | 4.2 | <!-- vk:0a82ede5-1545-46ef-a049-a663814f9300 --> |
+| 4.4 | Thumbnail tooltip integration | Display the captured thumbnail alongside the time tooltip above the timeline bar. Size: ~160x90px. Show loading placeholder while frame is being captured | High | M | 4.2, 3.3 | <!-- vk:aaa6b21f-ab71-4d1e-b0c0-00261e052562 --> |
+| 4.5 | Performance guard | Debounce thumbnail generation during rapid mouse movement (e.g., only capture frame after cursor is stationary for ~150ms). Cancel in-flight seeks when cursor moves | Medium | S | 4.4 | <!-- vk:58ff2596-276d-4509-9858-4f797d58d02c --> |
+| 4.6 | Tests for thumbnail generation | Test: canvas capture produces valid data URL, cache hits avoid re-seek, debounce prevents excessive captures, graceful fallback on video load error | Medium | M | 4.2, 4.3 | <!-- vk:c154e1bb-e055-48e9-9e0e-075ed7e25528 --> |
 
 ### Task Details
 
-**4.1 - TimelineTopBar component**
-- [ ] Renders a top bar with slots for camera selector, time range, and event filters
-- [ ] Dark theme styling consistent with existing app header
-- [ ] Responsive layout (items wrap on smaller screens)
+**4.1 - Hidden video element for thumbnail generation**
+- [ ] Hidden `<video>` element created once (not per-hover) with `preload="metadata"`
+- [ ] Loads recording URL when a new recording is hovered
+- [ ] Seeks to the calculated offset within the recording
+- [ ] Fires a callback when seek is complete (`seeked` event)
+- [ ] Does not produce audio output (muted)
 
-**4.2 - Camera selector**
-- [ ] Fetches camera list from `/api/recordings/cameras` on mount
-- [ ] Displays current camera name
-- [ ] Dropdown allows switching; triggers timeline data reload
-- [ ] Persists last-selected camera in `localStorage`; restores on page load
-- [ ] Defaults to first camera if no localStorage value
+**4.2 - Canvas frame capture utility**
+- [ ] Function `captureFrame(videoElement: HTMLVideoElement): string` returns data URL
+- [ ] Canvas dimensions match video aspect ratio, scaled to thumbnail size (~160x90)
+- [ ] Returns empty string / null on capture failure
+- [ ] Works cross-browser (Chrome, Firefox, Safari, Edge)
 
-**4.3 - Time range presets**
-- [ ] Four preset buttons: Last Hour, Last 24 Hours (default), Last 7 Days, Custom
-- [ ] Active preset has visual highlight
-- [ ] Custom opens a date-time range picker (from/to)
-- [ ] Selecting a preset updates `timeRange` in `useTimeline` hook and triggers re-fetch
+**4.3 - Thumbnail cache**
+- [ ] LRU cache with max 50 entries
+- [ ] Key format: `${recordingPath}:${Math.round(offsetRatio * 100)}` (1% granularity)
+- [ ] Cache hit returns immediately without video seek
+- [ ] Cache evicts oldest entries when full
 
-**4.4 - Event type filter with counts**
-- [ ] Three tabs/chips: All, Doorbell, Motion
-- [ ] Each shows count from `/api/recordings/counts` for current camera + time range
-- [ ] Selecting a filter updates the timeline to show only matching events
-- [ ] Counts refresh when camera or time range changes
+**4.4 - Thumbnail tooltip integration**
+- [ ] Thumbnail appears above the timeline bar, alongside the time text
+- [ ] Size: ~160x90px with rounded corners
+- [ ] Shows a subtle loading indicator (pulse/skeleton) while frame is being captured
+- [ ] Hidden when cursor is over a gap (no recording at that position)
+- [ ] Smooth transition between thumbnails (no flicker)
 
-**4.5 - Active filter chips**
-- [ ] Shows chips for non-default filters (e.g., "Camera: Front Door", "Doorbell Only")
-- [ ] Each chip has a dismiss/clear button
-- [ ] Clearing a chip resets that filter to default
+**4.5 - Performance guard**
+- [ ] Thumbnail capture only triggers after cursor stationary for ~150ms
+- [ ] Moving cursor cancels any in-flight seek/capture
+- [ ] Main video playback is unaffected (separate video element)
+- [ ] No memory leaks from uncancelled operations
+
+**4.6 - Tests for thumbnail generation**
+- [ ] Canvas capture with mock video element returns valid data URL
+- [ ] Cache returns cached value on second call with same key
+- [ ] Cache evicts oldest when full
+- [ ] Debounce prevents capture when cursor moves within 150ms
+- [ ] All tests pass with `npm test`
 
 ---
 
-## Epic 5: Hover Previews (NOT STARTED)
+## Epic 5: Testing & Polish (NOT STARTED)
 
-Add tooltip popups when hovering over recording blocks on the timeline, showing snapshot thumbnails and metadata.
+End-to-end validation, edge case handling, and visual polish across all new features.
 
 ### Acceptance Criteria
 
-- [ ] Hovering a timeline block shows a preview popup above the timeline
-- [ ] Preview includes snapshot thumbnail (or fallback), timestamp, event type, and description snippet
-- [ ] Preview appears/disappears smoothly with a debounce delay
+- [ ] All existing 103 tests continue passing
+- [ ] New features have unit test coverage
+- [ ] Edge cases handled gracefully (no recordings, failed loads, missing timestamps)
+- [ ] Visual consistency with existing dark theme
+- [ ] No performance regressions during scrubbing
 
 ### Tasks
 
 | ID | Title | Description | Priority | Complexity | Depends On | Status |
 |----|-------|-------------|----------|------------|------------|--------|
-| 5.1 | HoverPreview component | Create `HoverPreview.tsx` — positioned tooltip showing snapshot, timestamp, event type, description | Medium | M | 2.2 | <!-- vk:67d56e12-de52-4cd0-a473-18e842014f88 --> |
-| 5.2 | Snapshot thumbnail loading | Load snapshot image from `/api/recordings/:date/:camera/:file` (snapshot_key), with placeholder fallback for missing snapshots | Medium | M | 5.1 | <!-- vk:813a85c7-eb54-43d7-ac49-97735711776d --> |
-| 5.3 | Debounced show/hide | Add hover delay (~200ms) before showing preview, immediate hide on mouse leave, prevent flicker on rapid mouse movement | Medium | S | 5.1 | <!-- vk:372921ac-1a8d-455c-a7d1-4c29ee3cde99 --> |
+| 5.1 | Integration test: auto-jump + wall-clock | End-to-end test that loads timeline view, verifies auto-jump to latest recording, and checks wall-clock time display updates during playback | High | M | 1.2, 2.2 | <!-- vk:6a948145-a331-4c92-9a7c-62faff4ec52e --> |
+| 5.2 | Integration test: scrubbing flow | Test hover indicator appears, time tooltip shows correct time, click-to-seek works within recording block, gap click selects nearest | High | M | 3.7 | <!-- vk:d7ca8790-d13a-47f3-bf53-f1051b242461 --> |
+| 5.3 | Visual polish pass | Ensure all new UI elements (time tooltip, scrub indicator, wall-clock overlay, thumbnail) match the existing dark theme. Check contrast, spacing, font sizes | Medium | S | 4.4 | <!-- vk:19642a50-308b-4eb7-9be8-28101ae2de80 --> |
+| 5.4 | Performance validation | Verify scrubbing stays >=30fps with 500 recordings visible. Profile thumbnail generation doesn't block main thread. Check auto-jump completes within 200ms | Medium | M | 3.7, 4.5 | <!-- vk:af33abd8-a707-4261-a5ea-99301aed2e3f --> |
+| 5.5 | Edge case sweep | Test: recordings with null timestamps, single recording in range, recordings spanning midnight, very short clips (<1s), very long time ranges (7 days), rapid filter switching | Medium | M | 1.3, 2.4, 3.5 | <!-- vk:cb6f32f8-a680-443d-ad00-98e68fb23a45 --> |
 
 ### Task Details
 
-**5.1 - HoverPreview component**
-- [ ] Renders a tooltip-style popup positioned above the hovered block
-- [ ] Shows: thumbnail area, timestamp, event type badge, description text (truncated to ~100 chars)
-- [ ] Popup stays within viewport bounds (doesn't overflow screen edges)
-- [ ] Dark theme styling with subtle shadow/border
+**5.1 - Integration test: auto-jump + wall-clock**
+- [ ] Timeline loads and auto-selects the most recent recording
+- [ ] Video player shows wall-clock time matching recording timestamp
+- [ ] Seeking within video updates wall-clock time correctly
+- [ ] All assertions pass in `npm test`
 
-**5.2 - Snapshot thumbnail loading**
-- [ ] Loads snapshot image using the recording's `snapshot_key`
-- [ ] Shows a placeholder icon (camera or event type icon) when `snapshot_key` is null
-- [ ] Handles image load errors gracefully (falls back to placeholder)
+**5.2 - Integration test: scrubbing flow**
+- [ ] Hover over timeline bar shows scrub indicator and time tooltip
+- [ ] Click within recording block triggers seek
+- [ ] Click in gap selects nearest recording
+- [ ] All assertions pass in `npm test`
 
-**5.3 - Debounced show/hide**
-- [ ] Preview appears after ~200ms hover delay (not instant)
-- [ ] Preview disappears immediately on mouse leave
-- [ ] Rapid mouse movement across blocks doesn't cause flickering
-- [ ] Only one preview visible at a time
+**5.3 - Visual polish pass**
+- [ ] Time tooltip uses dark background with light text, matching existing theme
+- [ ] Scrub indicator line uses appropriate color (not conflicting with now indicator or selection)
+- [ ] Wall-clock time styled consistently with existing metadata display
+- [ ] Thumbnail has subtle border/shadow matching existing hover previews
+- [ ] No layout shifts or overflow issues at any zoom level
 
----
+**5.4 - Performance validation**
+- [ ] Scrubbing at 500 recordings: no frame drops below 30fps
+- [ ] Thumbnail generation: main thread not blocked (uses async seek + capture)
+- [ ] Auto-jump query: < 200ms from data loaded to scroll complete
+- [ ] No memory leaks after extended scrubbing session (check Chrome DevTools)
 
-## Epic 6: Navigation, Routing & Deep-Linking (NOT STARTED)
-
-Wire up the timeline view as the default recordings screen, preserve the grid view as "View All", and support URL deep-linking to specific recordings.
-
-### Acceptance Criteria
-
-- [ ] `#/recordings` loads the timeline view (new default)
-- [ ] `#/recordings/all` loads the existing grid view
-- [ ] "View All" button in timeline view navigates to grid view
-- [ ] Selecting a recording updates the URL hash for deep-linking
-- [ ] Loading a deep-link URL selects and auto-plays the referenced recording
-
-### Tasks
-
-| ID | Title | Description | Priority | Complexity | Depends On | Status |
-|----|-------|-------------|----------|------------|------------|--------|
-| 6.1 | Route setup | Update hash router: `#/recordings` → TimelineView, `#/recordings/all` → existing RecordingsTab | Medium | M | 2.1, 3.1, 4.1 | <!-- vk:02bbe67a-159c-4bf0-a8e2-210cca24c3b1 --> |
-| 6.2 | View toggle button | Add "View All" button/link in timeline top bar to navigate to grid view | Medium | S | 6.1 | <!-- vk:ee2bc217-d5da-447e-bae1-f49a70830918 --> |
-| 6.3 | Deep-link selected recording | Update URL hash when selecting a recording (e.g., `#/recordings?id=123`); on page load, parse hash and auto-select/play that recording | Medium | M | 6.1, 2.6 | <!-- vk:1e6a8d1b-6b8e-4e6b-af9b-32d7a00e6568 --> |
-| 6.4 | Shared filter state | Camera and time range selections sync between timeline and grid views via URL params or shared state | Low | M | 6.1, 4.2, 4.3 | <!-- vk:dde145b8-a046-4ac5-8444-d1a939fbc7d9 --> |
-
-### Task Details
-
-**6.1 - Route setup**
-- [ ] `#/recordings` renders the new `TimelineView` component
-- [ ] `#/recordings/all` renders the existing `RecordingsTab`
-- [ ] Navigation between views works without full page reload
-- [ ] Default tab/link in the app navigation points to `#/recordings`
-
-**6.2 - View toggle button**
-- [ ] "View All" button visible in the timeline top bar
-- [ ] Navigates to `#/recordings/all`
-- [ ] Grid view has a "Timeline" button to navigate back to `#/recordings`
-
-**6.3 - Deep-link selected recording**
-- [ ] Selecting a recording updates the URL (e.g., `#/recordings?id=123`)
-- [ ] Clearing selection removes the `id` param
-- [ ] Loading page with `?id=123` auto-fetches that recording's data, scrolls timeline, and auto-plays
-- [ ] Invalid or deleted recording ID shows empty state gracefully
-
-**6.4 - Shared filter state**
-- [ ] Camera selection persists when switching between timeline and grid views
-- [ ] Time range / event type filter is reflected in URL params where applicable
-- [ ] Switching views doesn't lose the user's current filter context
-
----
-
-## Epic 7: Keyboard & Accessibility (NOT STARTED)
-
-Add keyboard navigation and ARIA support for screen readers and power users.
-
-### Acceptance Criteria
-
-- [ ] Left/Right arrows navigate between recordings
-- [ ] Space plays/pauses the video
-- [ ] Escape clears selection
-- [ ] Timeline blocks have ARIA labels
-- [ ] Focus indicators are visible on all interactive elements
-
-### Tasks
-
-| ID | Title | Description | Priority | Complexity | Depends On | Status |
-|----|-------|-------------|----------|------------|------------|--------|
-| 7.1 | Keyboard shortcuts | Left/Right arrows for prev/next recording, Space for play/pause, Escape for deselect | Medium | M | 3.3 | <!-- vk:cf8a8d42-a0dd-4327-b3ec-1575db9c8c3f --> |
-| 7.2 | ARIA labels & roles | Add ARIA labels to timeline blocks, buttons, and regions; role="slider" for timeline, role="region" for player | Medium | M | 2.2, 3.1 | <!-- vk:6bd3e254-23f8-456a-9a6c-d45c8817f109 --> |
-| 7.3 | Focus management | Visible focus indicators on all interactive elements; focus moves logically (top bar → player → timeline) | Medium | S | 7.2 | <!-- vk:739b74f2-fd6f-48bf-b49d-65f5e8b6d961 --> |
-
-### Task Details
-
-**7.1 - Keyboard shortcuts**
-- [ ] Left arrow selects previous recording; Right arrow selects next
-- [ ] Space toggles video play/pause
-- [ ] Escape clears the selected recording (returns to empty state)
-- [ ] Shortcuts only active when timeline view is focused (don't conflict with other inputs)
-
-**7.2 - ARIA labels & roles**
-- [ ] Each timeline block has `aria-label` (e.g., "Motion event at 7:45 AM")
-- [ ] Timeline bar has `role="slider"` or appropriate landmark role
-- [ ] Player region has `role="region"` with `aria-label="Video player"`
-- [ ] Filter buttons have descriptive labels
-
-**7.3 - Focus management**
-- [ ] Focus ring visible on all interactive elements (buttons, blocks, controls)
-- [ ] Tab order follows logical flow: top bar → main content → timeline
-- [ ] Focus does not get trapped in any component
-
----
-
-## Epic 8: Responsive & Polish (NOT STARTED)
-
-Ensure the timeline view works well across screen sizes, add smooth animations, and handle edge cases.
-
-### Acceptance Criteria
-
-- [ ] Timeline view is usable on screens down to 768px width
-- [ ] Animations are smooth (block transitions, preview show/hide, selection changes)
-- [ ] Empty time ranges show a friendly message
-- [ ] Loading states are clear and non-jarring
-- [ ] Touch drag works on tablet devices
-
-### Tasks
-
-| ID | Title | Description | Priority | Complexity | Depends On | Status |
-|----|-------|-------------|----------|------------|------------|--------|
-| 8.1 | Responsive layout | Timeline bar and top bar adapt to narrower screens; metadata panel stacks below video on small screens | Low | M | 2.1, 3.1, 4.1 | <!-- vk:2465f4a0-9fa3-4a73-9eb2-c9c2cf1afc6a --> |
-| 8.2 | Smooth animations | CSS transitions for block hover states, selection changes, preview show/hide, and filter transitions | Low | M | 2.2, 5.1 | <!-- vk:ec92a058-b8c0-43b3-bad3-89590274602d --> |
-| 8.3 | Empty & loading states | Skeleton/spinner for timeline loading; friendly empty state for time ranges with no recordings | Medium | S | 2.6 | <!-- vk:b50a17d8-86d5-46a4-a9bc-d623a12e853a --> |
-| 8.4 | Touch support | Touch drag for timeline scrolling on tablets; tap-to-select works correctly | Low | M | 2.3 | <!-- vk:50111128-1d50-4cb7-bd3c-fef2274f4b9c --> |
-| 8.5 | Error handling | Graceful handling of API errors, video load failures, and network issues with user-visible feedback | Medium | S | 2.6, 3.1 | <!-- vk:256cf5cd-9c4b-4418-83f1-f259a25c37ac --> |
-
-### Task Details
-
-**8.1 - Responsive layout**
-- [ ] At 768px width, all elements remain usable (no horizontal overflow or overlapping)
-- [ ] Metadata panel moves below video on narrow screens
-- [ ] Top bar filters wrap rather than overflow
-- [ ] Timeline bar maintains full width with adjusted marker density
-
-**8.2 - Smooth animations**
-- [ ] Block hover: subtle scale or brightness change (~150ms)
-- [ ] Selection change: scrubber line animates to new position
-- [ ] Preview popup: fade in/out (~200ms)
-- [ ] No animations cause layout shifts or jank
-
-**8.3 - Empty & loading states**
-- [ ] Timeline shows a skeleton or spinner during data fetch
-- [ ] Empty time range shows "No recordings in this time range" with suggestion to adjust filters
-- [ ] Loading-to-loaded transition is smooth (no flash of empty state)
-
-**8.4 - Touch support**
-- [ ] Touch drag scrolls the timeline on touch devices
-- [ ] Single tap on a block selects the recording
-- [ ] No conflict between scroll and tap gestures
-- [ ] Touch drag feels natural with momentum
-
-**8.5 - Error handling**
-- [ ] API fetch error shows inline error message with retry button
-- [ ] Video load failure shows error state in player area
-- [ ] Network timeout handled gracefully (not silent failure)
+**5.5 - Edge case sweep**
+- [ ] Null timestamp recording: wall-clock hidden, auto-jump skips it
+- [ ] Single recording: auto-jump selects it, scrubbing limited to that block
+- [ ] Midnight rollover: wall-clock correctly shows AM/PM transition
+- [ ] Sub-1-second clip: block visible (minimum width), seek works
+- [ ] 7-day range with many recordings: scrubbing remains responsive
+- [ ] Rapid filter switching: no race conditions or stale selections
 
 ---
 
 ## Dependencies
 
-- Existing recordings API (`GET /api/recordings`, `GET /api/recordings/cameras`, `DELETE /api/recordings/:date/:camera/:file`)
-- Existing snapshot infrastructure (`snapshot_key` field and serving endpoint)
-- Existing auth middleware (password-based, cookie auth)
-- Existing dark theme CSS variables and patterns
+- Recording `timestamp` field reliably populated as ISO 8601 (already in place)
+- HTTP range request support for video seeking (already in place)
+- Existing `/api/recordings/timeline` endpoint returns lightweight recording data (already in place)
+- Existing TimelineBar, TimelinePlayer, and useTimeline hook (already built)
 
 ## Out of Scope
 
-- Live camera streaming
-- Continuous recording playback (only event-based clips)
-- Multi-camera side-by-side comparison
-- Recording annotation or editing
-- Push notifications
-- "Reviewed" marking (deferred — no DB column)
-- Bulk operations in timeline view (kept in grid view only)
+- Live streaming from camera feed
+- Video editing, clipping, or exporting
+- Multi-camera simultaneous playback
+- New backend API endpoints or database schema changes
+- Mobile-native app
 
 ## Open Questions
 
-- [ ] Should recording `duration` be extracted from video metadata in a future phase for richer timeline blocks?
-- [ ] Should the timeline support pinch-to-zoom on touch devices, or are the presets sufficient?
+- [ ] Should the time tooltip respect browser locale for 12h/24h format, or always use 12h AM/PM?
+- [ ] Should thumbnail generation use server-side frame extraction in a future iteration for better performance?
 
 ## Related Documents
 
 | Document | Purpose | Status |
 |----------|---------|--------|
-| prd/timeline-review.md | Product Requirements | Current |
-| view.png | Frigate NVR reference screenshot | Reference |
+| docs/prd.md | Product Requirements (Timeline Playback Enhancements) | Current |
 
 ---
 
 ## Changelog
 
-- **2026-03-21**: Generated 43 VibeKanban issues (8 epics + 35 tasks) and linked to plan
-- **2026-03-21**: Initial development plan created from PRD
+- **2026-03-23**: Synced with VibeKanban — all 30 tasks at "To do", no status changes
+- **2026-03-22**: Generated 35 VibeKanban issues (5 epics + 30 tasks) and linked to plan
+- **2026-03-22**: Initial development plan created from PRD
