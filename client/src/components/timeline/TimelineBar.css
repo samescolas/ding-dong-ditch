@@ -158,6 +158,36 @@
   transition: left var(--duration-fast) var(--ease-default);
 }
 
+/* Hover indicator line */
+.timeline-bar__hover-line {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--color-fg-muted);
+  opacity: 0.5;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Hover time tooltip */
+.timeline-bar__tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  transform: translateX(-50%);
+  margin-bottom: 4px;
+  padding: 2px 8px;
+  background: var(--color-bg-emphasis);
+  color: var(--color-fg-on-emphasis);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 10;
+}
+
 /* Responsive: compact bar on narrow screens */
 @media (max-width: 768px) {
   .timeline-bar {

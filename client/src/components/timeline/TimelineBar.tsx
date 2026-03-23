@@ -1,4 +1,5 @@
 import { useRef, useMemo, useCallback, useEffect, useState } from "react";
+import { pixelToTime, formatTooltipTime } from "../../utils/timelineUtils";
 import "./TimelineBar.css";
 
 export interface TimelineRecording {
@@ -164,6 +165,7 @@ export default function TimelineBar({
     isSwiping: boolean;
   }>({ active: false, startX: 0, startScroll: 0, isSwiping: false });
   const [isDragging, setIsDragging] = useState(false);
+  const [hoverX, setHoverX] = useState<number | null>(null);
 
   const rangeMs = timeRange.to.getTime() - timeRange.from.getTime();
   const fromMs = timeRange.from.getTime();
@@ -296,6 +298,32 @@ export default function TimelineBar({
     [onSelect],
   );
 
+  const handleTrackMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const trackEl = e.currentTarget;
+      const rect = trackEl.getBoundingClientRect();
+      const x = e.clientX - rect.left + trackEl.parentElement!.scrollLeft;
+      setHoverX(x);
+    },
+    [],
+  );
+
+  const handleTrackMouseLeave = useCallback(() => {
+    setHoverX(null);
+  }, []);
+
+  // Compute tooltip content and clamped position
+  const tooltip = useMemo(() => {
+    if (hoverX === null) return null;
+    const time = pixelToTime(hoverX, trackWidth, timeRange);
+    const label = formatTooltipTime(time, rangeMs);
+    // Clamp horizontally: keep tooltip within track bounds
+    // Approximate tooltip half-width ~40px
+    const halfTooltip = 40;
+    const clampedX = Math.max(halfTooltip, Math.min(hoverX, trackWidth - halfTooltip));
+    return { label, x: clampedX };
+  }, [hoverX, trackWidth, timeRange, rangeMs]);
+
   return (
     <div className="timeline-bar" ref={containerRef} onClick={handleBarClick} role="region" aria-label="Recording timeline">
       <div
@@ -304,7 +332,12 @@ export default function TimelineBar({
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
       >
-      <div className="timeline-bar__track" style={{ width: `${trackWidth}px` }}>
+      <div
+        className="timeline-bar__track"
+        style={{ width: `${trackWidth}px` }}
+        onMouseMove={handleTrackMouseMove}
+        onMouseLeave={handleTrackMouseLeave}
+      >
         {/* Time markers */}
         {markers.map((marker, i) => (
           <div
@@ -357,6 +390,24 @@ export default function TimelineBar({
             <div className="timeline-bar__scrubber" style={{ left: `${pos}%` }} />
           );
         })()}
+
+        {/* Hover indicator line */}
+        {hoverX !== null && (
+          <div
+            className="timeline-bar__hover-line"
+            style={{ left: `${hoverX}px` }}
+          />
+        )}
+
+        {/* Hover time tooltip */}
+        {tooltip && (
+          <div
+            className="timeline-bar__tooltip"
+            style={{ left: `${tooltip.x}px` }}
+          >
+            {tooltip.label}
+          </div>
+        )}
       </div>
       </div>
     </div>
