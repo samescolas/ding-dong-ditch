@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TimelineRecording } from "../../types/timeline";
+import { formatWallClockTime } from "../../utils/formatWallClockTime";
 import "./TimelinePlayer.css";
 
 interface TimelinePlayerProps {
@@ -40,6 +41,20 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Format seconds into m:ss or h:mm:ss as appropriate.
+ */
+function formatVideoTime(totalSeconds: number): string {
+  const rounded = Math.floor(totalSeconds);
+  const h = Math.floor(rounded / 3600);
+  const m = Math.floor((rounded % 3600) / 60);
+  const s = rounded % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function eventLabel(eventType: string | null): string {
   switch (eventType) {
     case "doorbell":
@@ -59,9 +74,26 @@ export default function TimelinePlayer({
 }: TimelinePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const handleTimeUpdate = useCallback(() => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  }, []);
+
+  const handleLoadedMetadata = useCallback(() => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  }, []);
 
   useEffect(() => {
     setError(false);
+    setCurrentTime(0);
+    setDuration(0);
     if (recording && videoRef.current) {
       videoRef.current.load();
       videoRef.current.play().catch(() => {
@@ -129,6 +161,9 @@ export default function TimelinePlayer({
           playsInline
           src={`/api/recordings/${recording.path}`}
           onError={() => setError(true)}
+          onTimeUpdate={handleTimeUpdate}
+          onSeeked={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
         />
         <button
           className="timeline-player__nav timeline-player__nav--prev"
@@ -149,6 +184,23 @@ export default function TimelinePlayer({
           </svg>
         </button>
       </div>
+
+      {duration > 0 && (() => {
+        const wallClock = formatWallClockTime(recording.timestamp, currentTime);
+        return (
+          <div className="timeline-player__time-display">
+            <span className="timeline-player__time-elapsed">
+              {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+            </span>
+            {wallClock && (
+              <>
+                <span className="timeline-player__time-separator">&middot;</span>
+                <span className="timeline-player__time-wall">{wallClock}</span>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="timeline-player__meta">
         <div className="timeline-player__meta-primary">
